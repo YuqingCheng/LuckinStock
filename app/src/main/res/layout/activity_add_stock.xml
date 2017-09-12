@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.yuqingcheng.luckinstock.AddStockActivity">
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stock Symbol:"
+        android:textSize="18dp"
+        android:layout_alignBaseline="@+id/stockName"
+        android:layout_alignBottom="@+id/stockName"
+        android:layout_toStartOf="@+id/stockName" />
+
+    <EditText
+        android:id="@+id/stockName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="117dp"
+        android:ems="10"
+        android:hint="AAPL"
+        android:inputType="textPersonName" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18dp"
+        android:text="Date from:"
+        android:layout_alignBaseline="@+id/fromDate"
+        android:layout_alignBottom="@+id/fromDate"
+        android:layout_alignStart="@+id/textView2" />
+
+    <EditText
+        android:id="@+id/fromDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/stockName"
+        android:layout_below="@+id/stockName"
+        android:ems="10"
+        android:hint="2017/01/01"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/toDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/fromDate"
+        android:layout_below="@+id/fromDate"
+        android:ems="10"
+        android:hint="2017/06/01"
+        android:inputType="textPersonName" />
+
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18dp"
+        android:layout_alignBottom="@+id/toDate"
+        android:layout_alignStart="@+id/textView3"
+        android:layout_marginBottom="11dp"
+        android:text="Date to:" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/toDate"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="73dp"
+        android:orientation="horizontal"
+        android:id="@+id/linearLayout">
+
+        <Button
+            android:id="@+id/button6"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignTop="@+id/linearLayout"
+            android:layout_weight="1"
+            android:onClick="addStock"
+            android:text="Add Stock" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/button7"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/textView5"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="13dp"
+        android:onClick="goBack"
+        android:text="Back" />
+
+</RelativeLayout>
