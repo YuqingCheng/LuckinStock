@@ -1,17 +1,26 @@
 package com.yuqingcheng.luckinstock;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.camera2.params.ColorSpaceTransform;
+import android.media.Image;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.androidplot.xy.LineAndPointFormatter;
@@ -32,6 +41,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,15 +49,14 @@ import java.util.TreeSet;
 
 public class MainActivity extends AppCompatActivity {
 
-    static int ADD_STOCK_TO_DISPLAY = 0;
+    static int UPDATE_STOCK_TO_DISPLAY = 0;
     static int ADD_BASKET_TO_DISPLAY = 1;
-    static int EDIT_STOCK = 2;
 
     Set<Integer> colors;
 
     StockAnalyzer analyzer;
 
-    List<String> listViewItems;
+    List<String> listViewSymbols;
 
     ListView listView;
 
@@ -69,9 +78,7 @@ public class MainActivity extends AppCompatActivity {
 
     Map<Integer, Integer> dateParseMap;
 
-    int minDate;
-
-    int maxDate;
+    ArrayAdapter<String> listViewAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
         analyzer = new MyStockAnalyzer();
 
-        listViewItems = new ArrayList<>();
+        listViewSymbols = new LinkedList<>();
 
         curveUpdateMap = new HashMap<>();
 
@@ -108,9 +115,9 @@ public class MainActivity extends AppCompatActivity {
 
         plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).setFormat(new XLabelFormat());
 
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, listViewItems);
+        listViewAdapter = new ListViewAdapter(this, listViewSymbols);
 
-        listView.setAdapter(arrayAdapter);
+        listView.setAdapter(listViewAdapter);
     }
 
     private class XLabelFormat extends Format {
@@ -136,6 +143,52 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private class ListViewAdapter extends ArrayAdapter<String> {
+        private final Context context;
+        private final List<String> symbols;
+
+        public ListViewAdapter(Context context, List<String> symbols) {
+            super(context, -1, symbols);
+            this.context = context;
+            this.symbols = symbols;
+        }
+
+        @Override
+        public View getView(final int position, View convertView, final ViewGroup parent) {
+            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View rowView = inflater.inflate(R.layout.list_item, parent, false);
+
+            TextView symbol = (TextView) rowView.findViewById(R.id.symbol);
+
+            ImageView color = (ImageView) rowView.findViewById(R.id.color);
+
+            symbol.setText(symbols.get(position));
+            //FIXME: color.setImageDrawable(new ColorDrawable(#rgb));
+
+
+            TextView name = (TextView) rowView.findViewById(R.id.name);
+
+            ImageButton edit = (ImageButton) rowView.findViewById(R.id.edit);
+
+            edit.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(getApplicationContext(), AddStockActivity.class);
+                    intent.putExtra("symbol", symbols.get(position));
+
+                    startActivityForResult(intent, UPDATE_STOCK_TO_DISPLAY);
+
+                }
+            });
+
+            return rowView;
+
+        }
+
+
+
+    }
+
     public void addStock(View view) {
 
         if(colors.isEmpty()) {
@@ -147,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, AddStockActivity.class);
 
-        startActivityForResult(intent, ADD_STOCK_TO_DISPLAY);
+        startActivityForResult(intent, UPDATE_STOCK_TO_DISPLAY);
 
     }
 
@@ -244,17 +297,29 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        if (requestCode == ADD_STOCK_TO_DISPLAY) {
+        if (requestCode == UPDATE_STOCK_TO_DISPLAY) {
             if(resultCode == Activity.RESULT_OK){
                 String result = data.getStringExtra("result");
                 String[] strs = result.split(",");
 
-                listViewItems.add(strs[0]);
+                boolean listViewUpdated = true;
 
-                UpdateDisplayedItemsTask updateDisplayedItemsTask = new UpdateDisplayedItemsTask();
+                for(String each : this.listViewSymbols) {
+                    if(each.equals(strs[0])) {
+                        listViewUpdated = false;
+                        break;
+                    }
+                }
+
+                if(listViewUpdated){
+                    listViewSymbols.add(strs[0]);
+                    listViewAdapter.notifyDataSetChanged();
+                }
+
+                AddDisplayedItemsTask addDisplayedItemsTask = new AddDisplayedItemsTask();
 
                 try{
-                    if(updateDisplayedItemsTask.execute(strs[0], strs[1], strs[2]).get()) {
+                    if(addDisplayedItemsTask.execute(strs[0], strs[1], strs[2]).get()) {
 
                         refreshPlot();
 
@@ -273,7 +338,7 @@ public class MainActivity extends AppCompatActivity {
     }//onActivityResult
 
 
-    public class UpdateDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
+    public class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
 
         @Override
         protected Boolean doInBackground(String... strs) {

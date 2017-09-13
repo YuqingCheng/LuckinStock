@@ -36,6 +36,16 @@ public class AddStockActivity extends AppCompatActivity {
 
         toDate = (EditText) findViewById(R.id.toDate);
 
+        try{
+            Intent intent = getIntent();
+            String symbol = intent.getStringExtra("symbol");
+            if(symbol.length() > 0) {
+                stockName.setText(symbol);
+            }
+        }catch(Exception e) {
+            //do nothing.
+        }
+
     }
 
     public class CheckStockSymbol extends AsyncTask<String, Void, Boolean> {
