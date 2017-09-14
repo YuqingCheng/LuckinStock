@@ -63,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
 
     List<String> listViewSymbols;
 
+    Map<String, String> listViewNameMap;
+
     ListView listView;
 
     Map<String, List<Integer>> seriesXMap; // local stock date data of each plot.
@@ -93,6 +95,8 @@ public class MainActivity extends AppCompatActivity {
         analyzer = new MyStockAnalyzer();
 
         listViewSymbols = new LinkedList<>();
+
+        listViewNameMap = new HashMap<>();
 
         curveUpdateMap = new HashMap<>();
 
@@ -174,14 +178,14 @@ public class MainActivity extends AppCompatActivity {
 
             ImageView color = (ImageView) rowView.findViewById(R.id.color);
 
-            symbol.setText(symbols.get(position));
-            //FIXME: color.setImageDrawable(new ColorDrawable(#rgb));
-
-
             TextView name = (TextView) rowView.findViewById(R.id.name);
 
             ImageButton edit = (ImageButton) rowView.findViewById(R.id.edit);
             ImageButton delete = (ImageButton) rowView.findViewById(R.id.delete);
+
+            symbol.setText(symbols.get(position));
+            //FIXME: color.setImageDrawable(new ColorDrawable(#rgb));
+            name.setText(listViewNameMap.get(symbols.get(position)));
 
             edit.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -244,7 +248,6 @@ public class MainActivity extends AppCompatActivity {
                         public void onClick(DialogInterface dialogInterface, int i) {
                             Intent intent = new Intent();
                             intent.putExtra("symbol", symbol);
-                            System.out.println("##### Delete instruction sending.");
                             mainActivity.onActivityResult(getTargetRequestCode(), Activity.RESULT_OK, intent);
                         }
                     })
@@ -395,6 +398,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if(listViewUpdated){
                     listViewSymbols.add(strs[0]);
+                    listViewNameMap.put(strs[0], strs[3]);
                     listViewAdapter.notifyDataSetChanged();
                 }
 
@@ -418,11 +422,11 @@ public class MainActivity extends AppCompatActivity {
             }
         } else if(requestCode == DELETE_CONFIRMATION) {
             if(resultCode == Activity.RESULT_OK) {
-                System.out.println("##### Delete instruction received.");
                 String symbol = data.getStringExtra("symbol");
                 System.out.println(symbol);
                 this.analyzer.removeDisplayedItem(symbol);
                 this.listViewSymbols.remove(symbol);
+                this.listViewNameMap.remove(symbol);
                 this.listViewAdapter.notifyDataSetChanged();
                 refreshPlot();
 

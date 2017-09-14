@@ -184,6 +184,15 @@ public class MyStockAnalyzer implements StockAnalyzer {
 
   }
 
+  @Override
+  public String getStockName(String symbol) throws IllegalArgumentException {
+    try{
+      return new Stock(symbol).getName();
+    }catch(IllegalArgumentException e) {
+      throw new IllegalArgumentException("Symbol is not valid.");
+    }
+  }
+
   /**
    * add historical price data of basket or stocks to displayed items.
    *

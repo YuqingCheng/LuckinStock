@@ -42,6 +42,15 @@ public class Stock implements TradableItem {
     this.retriever = new WebStockDataRetriever();
   }
 
+  public String getName() throws IllegalArgumentException{
+    try{
+      return retriever.getName(this.stockSymbol);
+    }catch(Exception e) {
+      e.printStackTrace();
+      throw new IllegalArgumentException("Stock symbol is not valid.");
+    }
+  }
+
   /**
    * decide whether a given string is a valid stock symbol.
    *

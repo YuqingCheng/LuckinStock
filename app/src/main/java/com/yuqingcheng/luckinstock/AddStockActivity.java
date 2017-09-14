@@ -48,20 +48,22 @@ public class AddStockActivity extends AppCompatActivity {
 
     }
 
-    public class CheckStockSymbol extends AsyncTask<String, Void, Boolean> {
+    public class GetStockName extends AsyncTask<String, Void, String> {
 
         @Override
-        protected Boolean doInBackground(String... strings) {
-            boolean res = analyzer.isValidStockSymbol(strings[0]);
-            Log.i("stock symbol valid:", ""+res);
-            return res;
+        protected String doInBackground(String... strings) {
+            try {
+                return analyzer.getStockName(strings[0]);
+            }catch(IllegalArgumentException e) {
+                return "";
+            }
         }
 
         @Override
-        protected void onPostExecute(Boolean isValidSymbol) {
-            super.onPostExecute(isValidSymbol);
+        protected void onPostExecute(String res) {
+            super.onPostExecute(res);
 
-            if(! isValidSymbol) {
+            if(res.length() == 0) {
                 Toast toast;
 
                 toast = Toast.makeText(getApplicationContext(),
@@ -104,21 +106,23 @@ public class AddStockActivity extends AppCompatActivity {
 
     public void addStock(View view) {
 
-        String stockNameStr = stockName.getText().toString();
+        String stockSymbol = stockName.getText().toString().toUpperCase();
 
         String fromDateStr = fromDate.getText().toString();
 
         String toDateStr = toDate.getText().toString();
 
+        String name = "";
+
         Toast toast;
 
-        CheckStockSymbol checkStockSymbolThread = new CheckStockSymbol();
+        GetStockName checkStockSymbolThread = new GetStockName();
         CheckDateRange checkDateRangeThread = new CheckDateRange();
 
         try{
-            boolean isValidSymbol = checkStockSymbolThread.execute(stockNameStr).get();
+            name = checkStockSymbolThread.execute(stockSymbol).get();
 
-            if(!isValidSymbol) return;
+            if(name.length() == 0) return;
 
             try{
                 boolean isValidDateRange = checkDateRangeThread.execute(fromDateStr, toDateStr).get();
@@ -141,7 +145,7 @@ public class AddStockActivity extends AppCompatActivity {
 
         Intent intent = new Intent();
 
-        intent.putExtra("result", stockNameStr + "," + fromDateStr + "," + toDateStr);
+        intent.putExtra("result", stockSymbol + "," + fromDateStr + "," + toDateStr+","+name);
         setResult(RESULT_OK, intent);
 
         finish();

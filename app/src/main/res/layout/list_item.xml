@@ -8,8 +8,8 @@
 
     <ImageView
         android:id="@+id/color"
-        android:layout_width="5dp"
-        android:layout_height="10dp"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
         android:layout_margin="10dp"
         android:layout_weight="1"
         app:srcCompat="@color/colorAccent" />
@@ -42,6 +42,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:background="@color/ap_transparent"
+        android:duplicateParentState="true"
         app:srcCompat="@android:drawable/ic_menu_manage" />
 
     <ImageButton

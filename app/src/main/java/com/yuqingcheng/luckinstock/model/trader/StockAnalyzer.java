@@ -43,6 +43,8 @@ public interface StockAnalyzer {
 
   boolean isValidDateRange(String fromDate, String toDate);
 
+  String getStockName(String symbol) throws IllegalArgumentException;
+
   void generateAutoRebalanceStrategy(String basketName, double invest, int period, Object endDate);
 
   double simulatingProfit();
