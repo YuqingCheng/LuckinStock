@@ -87,7 +87,7 @@ public class WebStockDataRetriever implements StockDataRetriever {
           Exception {
 
 
-    URL url = new URL("https://www.google"
+    URL url = new URL("https://finance.google"
             +
             ".com/finance/historical?output=csv&q=" + stockSymbol + "&startdate="
             + fromMonth + "+" + fromDate + "+" + fromYear
@@ -103,15 +103,20 @@ public class WebStockDataRetriever implements StockDataRetriever {
       output = sc.next();
       String[] data = output.split(",");
 
-      PriceRecord record = new PriceRecord(
-              Double.parseDouble(data[1]),
-              Double.parseDouble(data[4]),
-              Double.parseDouble(data[3]),
-              Double.parseDouble(data[2])
-      );
-      //date is index 0
-      Integer date = getDate(data[0]);
-      prices.put(date, record);
+      try {
+
+        PriceRecord record = new PriceRecord(
+                Double.parseDouble(data[1]),
+                Double.parseDouble(data[4]),
+                Double.parseDouble(data[3]),
+                Double.parseDouble(data[2])
+        );
+        //date is index 0
+        Integer date = getDate(data[0]);
+        prices.put(date, record);
+      }catch(NumberFormatException e) {
+        continue;
+      }
     }
     return prices;
 

@@ -1,14 +1,19 @@
 package com.yuqingcheng.luckinstock;
 
 import android.app.Activity;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.hardware.camera2.params.ColorSpaceTransform;
 import android.media.Image;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -50,7 +55,7 @@ import java.util.TreeSet;
 public class MainActivity extends AppCompatActivity {
 
     static int UPDATE_STOCK_TO_DISPLAY = 0;
-    static int ADD_BASKET_TO_DISPLAY = 1;
+    static int DELETE_CONFIRMATION = 1;
 
     Set<Integer> colors;
 
@@ -120,6 +125,10 @@ public class MainActivity extends AppCompatActivity {
         listView.setAdapter(listViewAdapter);
     }
 
+
+    /**
+     * A formmater to format the layout of x label.
+     */
     private class XLabelFormat extends Format {
 
         DateFormat fromFormat = new SimpleDateFormat("yyyyMMdd");
@@ -143,6 +152,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Adapter to handle the data in list view.
+     */
     private class ListViewAdapter extends ArrayAdapter<String> {
         private final Context context;
         private final List<String> symbols;
@@ -169,6 +181,7 @@ public class MainActivity extends AppCompatActivity {
             TextView name = (TextView) rowView.findViewById(R.id.name);
 
             ImageButton edit = (ImageButton) rowView.findViewById(R.id.edit);
+            ImageButton delete = (ImageButton) rowView.findViewById(R.id.delete);
 
             edit.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -181,13 +194,78 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            delete.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    DialogFragment dialog = new DeleteConfirmationDialog();
+                    Bundle args = new Bundle();
+                    args.putString(DeleteConfirmationDialog.STOCK_SYMBOL, symbols.get(position));
+
+                    dialog.setArguments(args);
+                    dialog.setTargetFragment(dialog, DELETE_CONFIRMATION); //FIXME
+                    dialog.show(getFragmentManager(), "tag");
+                }
+            });
+
             return rowView;
 
         }
+    }
 
+    public static class DeleteConfirmationDialog extends DialogFragment {
 
+        public static final String STOCK_SYMBOL = "DeleteConfirmationDialog.Symbol";
+        String symbol;
+
+        MainActivity mainActivity;
+
+        @Override
+        public void onAttach(Activity activity) {
+            super.onAttach(activity);
+            try{
+                mainActivity = (MainActivity) activity;
+            }catch (ClassCastException e){
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            Bundle args = getArguments();
+            symbol = args.getString(STOCK_SYMBOL);
+            String message = "Are you sure to delete the plot for " + symbol
+                    + "? Its moving average plot will be deleted as well.";
+
+            return new AlertDialog.Builder(getActivity())
+                    .setTitle("Confirm To Delete")
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            Intent intent = new Intent();
+                            intent.putExtra("symbol", symbol);
+                            System.out.println("##### Delete instruction sending.");
+                            mainActivity.onActivityResult(getTargetRequestCode(), Activity.RESULT_OK, intent);
+                        }
+                    })
+                    .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener()
+                    {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which)
+                        {
+                            getTargetFragment().onActivityResult(getTargetRequestCode(), Activity.RESULT_CANCELED, null);
+                        }
+                    })
+                    .create();
+        }
 
     }
+
+    /**
+     * call back method when clicking "add stock" button, direct to AddStockActivity.
+     *
+     * @param view
+     */
 
     public void addStock(View view) {
 
@@ -206,16 +284,17 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * A general checking method to detect any change in plot data,
-     * if change detected, update curves.
+     * if change detected, update plots.
      */
     private void refreshPlot() {
-
         Map<String, Integer> newCurveUpdateMap = analyzer.getCurveUpdateMap();
         Map<String, List<Integer>> newXMap = analyzer.getXMap();
         Map<String, List<Double>> newYMap = analyzer.getYMap();
         boolean changed = false;
 
-        for(String name : curveUpdateMap.keySet()) {
+        Set<String> currNames = new HashSet(curveUpdateMap.keySet());
+
+        for(String name : currNames) {
             if(!newCurveUpdateMap.containsKey(name)) {
                 changed = true;
                 curveUpdateMap.remove(name);
@@ -234,16 +313,17 @@ public class MainActivity extends AppCompatActivity {
                     || curveUpdateMap.get(name) != newCurveUpdateMap.get(name)) {
                 changed = true;
 
+                if(!curveUpdateMap.containsKey(name)){
+                    int color = colors.iterator().next();
+                    LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
+
+                    colors.remove(color);
+                    colorMap.put(name, color);
+                    formatterMap.put(name, formatter);
+                }
                 curveUpdateMap.put(name, newCurveUpdateMap.get(name));
                 seriesXMap.put(name, newXMap.get(name));
                 seriesYMap.put(name, newYMap.get(name));
-
-                int color = colors.iterator().next();
-                LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
-
-                colors.remove(color);
-                colorMap.put(name, color);
-                formatterMap.put(name, formatter);
             }
         }
 
@@ -252,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * actually update plots according to current local data.
+     * actually update plots in view according to current local data.
      */
     public void updatePlot() {
 
@@ -298,7 +378,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         if (requestCode == UPDATE_STOCK_TO_DISPLAY) {
+
             if(resultCode == Activity.RESULT_OK){
+
                 String result = data.getStringExtra("result");
                 String[] strs = result.split(",");
 
@@ -334,9 +416,27 @@ public class MainActivity extends AppCompatActivity {
                 //Write your code if there's no result
 
             }
+        } else if(requestCode == DELETE_CONFIRMATION) {
+            if(resultCode == Activity.RESULT_OK) {
+                System.out.println("##### Delete instruction received.");
+                String symbol = data.getStringExtra("symbol");
+                System.out.println(symbol);
+                this.analyzer.removeDisplayedItem(symbol);
+                this.listViewSymbols.remove(symbol);
+                this.listViewAdapter.notifyDataSetChanged();
+                refreshPlot();
+
+            }
+            if (resultCode == Activity.RESULT_CANCELED) {
+                //Write your code if there's no result
+
+            }
         }
     }//onActivityResult
 
+    /**
+     * Async task to add items to analyzer, related with retrieving data from the web.
+     */
 
     public class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
 
@@ -348,7 +448,7 @@ public class MainActivity extends AppCompatActivity {
                 analyzer.addStockOrBasketHistoricalDataToDisplayedItems(strs[0], strs[1], strs[2]);
 
             } catch(Exception e) {
-              return false;
+              e.printStackTrace();
             }
 
             return true;

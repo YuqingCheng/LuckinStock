@@ -245,6 +245,9 @@ public class MyStockAnalyzer implements StockAnalyzer {
       String[] strs = each.split("-");
       if (each.equals(itemName) || strs[0].equals(itemName)) {
         this.displayedItems.remove(each);
+        this.curveUpdateMap.remove(each);
+        this.yMap.remove(each);
+        this.xMap.remove(each);
       }
     }
 

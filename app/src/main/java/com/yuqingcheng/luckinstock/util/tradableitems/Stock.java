@@ -93,7 +93,8 @@ public class Stock implements TradableItem {
       return retriever.getHistoricalPrices(
               this.stockSymbol, fromDay, fromMonth, fromYear, toDay, toMonth, toYear);
     } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid input of date.");
+      e.printStackTrace();
+      throw new IllegalArgumentException("invalid input of date.");
     }
   }
 
