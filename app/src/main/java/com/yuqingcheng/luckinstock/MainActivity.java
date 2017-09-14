@@ -12,6 +12,7 @@ import android.graphics.drawable.Drawable;
 import android.hardware.camera2.params.ColorSpaceTransform;
 import android.media.Image;
 import android.os.AsyncTask;
+import android.support.annotation.IntegerRes;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -56,8 +57,12 @@ public class MainActivity extends AppCompatActivity {
 
     static int UPDATE_STOCK_TO_DISPLAY = 0;
     static int DELETE_CONFIRMATION = 1;
-    static float MA_50_COLOR_RATIO = 0.85f;
-    static float MA_200_COLOR_RATIO = 0.7f;
+    static float MA_50_COLOR_RATIO = 0.75f;
+    static float MA_200_COLOR_RATIO = 0.6f;
+    final String MA_50_CHECKED = "50_CHECKED";
+    final String MA_200_CHECKED = "200_CHECKED";
+    final String MA_50_SERIES_POSTFIX ="-MA-50";
+    final String MA_200_SERIES_POSTFIX = "-MA-200";
 
     Set<Integer> colors;
 
@@ -74,6 +79,10 @@ public class MainActivity extends AppCompatActivity {
     Map<String, List<Double>> seriesYMap; // local stock price data of each plot.
 
     Map<String, Integer> curveUpdateMap; // detect change in same curve.
+
+    Map<String, List<Integer>> maXMap;
+
+    Map<String, List<Double>> maYMap;
 
     XYPlot plot;
 
@@ -107,6 +116,10 @@ public class MainActivity extends AppCompatActivity {
         seriesXMap = new HashMap<>();
 
         seriesYMap = new HashMap<>();
+
+        maXMap = new HashMap<>();
+
+        maYMap = new HashMap<>();
 
         formatterMap = new HashMap<>();
 
@@ -301,6 +314,7 @@ public class MainActivity extends AppCompatActivity {
 
         Set<String> currNames = new HashSet(curveUpdateMap.keySet());
 
+        //check removed plot
         for(String name : currNames) {
             if(!newCurveUpdateMap.containsKey(name)) {
                 changed = true;
@@ -311,6 +325,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        //check added plot
         for(String name : newCurveUpdateMap.keySet()) {
             if(!curveUpdateMap.containsKey(name)
                     || curveUpdateMap.get(name) != newCurveUpdateMap.get(name)) {
@@ -319,6 +334,27 @@ public class MainActivity extends AppCompatActivity {
                 curveUpdateMap.put(name, newCurveUpdateMap.get(name));
                 seriesXMap.put(name, newXMap.get(name));
                 seriesYMap.put(name, newYMap.get(name));
+            }
+        }
+
+        //check removed ma plots.
+        Set<String> currMaNames = new HashSet(maXMap.keySet());
+        for(String name : currMaNames) {
+            if(!newXMap.containsKey(name)) {
+                changed = true;
+                maXMap.remove(name);
+                maYMap.remove(name);
+            }
+        }
+
+        //check added moving average, note that newCurveUpdateMap doesn't have ma information,
+        // but newXMap has.
+        for(String name : newXMap.keySet()) {
+            System.out.println("###### "+name);
+            if(!curveUpdateMap.containsKey(name) && !maXMap.containsKey(name)) {
+                changed = true;
+                maXMap.put(name, newXMap.get(name));
+                maYMap.put(name, newYMap.get(name));
             }
         }
 
@@ -357,6 +393,21 @@ public class MainActivity extends AppCompatActivity {
             }
 
             plot.addSeries(new SimpleXYSeries(tempList, this.seriesYMap.get(name), name), this.formatterMap.get(name));
+        }
+
+        for(String maName : this.maXMap.keySet()) {
+            List<Integer> tempList = new ArrayList<>();
+            for(Integer date : this.maXMap.get(maName)) {
+                tempList.add(this.dateValueMap.get(date));
+            }
+            String[] strs = maName.split("-");
+            int plotColor = colorMap.get(strs[0]);
+            float ratio = strs[2].equals("50") ? MA_50_COLOR_RATIO : MA_200_COLOR_RATIO;
+            int color = Color.rgb(Math.round(Color.red(plotColor) * ratio),
+                    Math.round(Color.green(plotColor) * ratio),
+                    Math.round(Color.blue(plotColor) * ratio));
+            LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
+            plot.addSeries(new SimpleXYSeries(tempList, this.maYMap.get(maName), maName), formatter);
         }
 
 
@@ -413,7 +464,23 @@ public class MainActivity extends AppCompatActivity {
                 try{
                     if(addDisplayedItemsTask.execute(symbol, fromDate, toDate).get()) {
 
-                        refreshPlot();
+                        AddMovingAverageTask addMovingAverageTask1 = new AddMovingAverageTask();
+                        AddMovingAverageTask addMovingAverageTask2 = new AddMovingAverageTask();
+
+                        if(movingAverage.equals(MA_50_CHECKED+MA_200_CHECKED)) {
+
+                            if(addMovingAverageTask1.execute(symbol, "50").get()) {
+                                if(addMovingAverageTask2.execute(symbol, "200").get()) refreshPlot();
+                            }// two tasks run one after another to avoid concurrency of editing maps in analyzer.
+
+                        } else if(movingAverage.equals(MA_50_CHECKED)){
+                            if(addMovingAverageTask1.execute(symbol, "50").get()) refreshPlot();
+                        }else if(movingAverage.equals(MA_200_CHECKED)){
+                            if(addMovingAverageTask1.execute(symbol, "200").get()) refreshPlot();
+                        }else{
+                            refreshPlot();
+                        }
+
 
                     }
                 } catch(Exception e) {
@@ -452,19 +519,42 @@ public class MainActivity extends AppCompatActivity {
 
     public class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
 
+        String[] strs;
+
         @Override
         protected Boolean doInBackground(String... strs) {
+
+            this.strs = strs;
 
             try{
 
                 analyzer.addStockOrBasketHistoricalDataToDisplayedItems(strs[0], strs[1], strs[2]);
 
             } catch(Exception e) {
-              e.printStackTrace();
+                e.printStackTrace();
+                return false;
             }
 
             return true;
         }
+
     }
 
+    public class AddMovingAverageTask extends AsyncTask<String, Void, Boolean> {
+
+        @Override
+        protected Boolean doInBackground(String... strs) {
+            String symbol = strs[0];
+            int days= Integer.valueOf(strs[1]);
+            try{
+
+                analyzer.addMovingAverageForExistingDisplayedItems(symbol, days);
+
+            }catch(Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        }
+    }
 }

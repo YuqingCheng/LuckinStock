@@ -278,15 +278,29 @@ public class MyStockAnalyzer implements StockAnalyzer {
       toDate = new TreeMap<>(displayedItems.get(name)).lastKey();
     }
 
+    Map<Integer, Double> result;
+    List<Integer> xValues = new ArrayList<>();
+    List<Double> yValues = new ArrayList<>();
+
+
     if (baskets.containsKey(name)) {
-      displayedItems.put(name + "-MA-"
-              + x, getHistoricalXDayMovingAverage(
-              baskets.get(name), basketSetDates.get(name), fromDate, toDate, x));
+      result = getHistoricalXDayMovingAverage(
+              baskets.get(name), basketSetDates.get(name), fromDate, toDate, x);
     } else {
-      displayedItems.put(name + "-MA-"
-              + x, getHistoricalXDayMovingAverage(name, fromDate, toDate, x));
+      result = getHistoricalXDayMovingAverage(name, fromDate, toDate, x);
     }
 
+    for(Map.Entry<Integer, Double> entry : result.entrySet()) {
+      xValues.add(entry.getKey());
+      yValues.add(entry.getValue());
+    }
+    String maSymbol = name+"-MA-"+x;
+    displayedItems.put(maSymbol, result);
+    xMap.put(maSymbol, xValues);
+    yMap.put(maSymbol, yValues);
+    for(String curve : xMap.keySet()) {
+      System.out.println("###### "+curve);
+    }
   }
 
   /**
