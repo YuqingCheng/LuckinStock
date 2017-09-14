@@ -6,7 +6,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.yuqingcheng.luckinstock.model.trader.MyStockAnalyzer;
@@ -22,6 +25,15 @@ public class AddStockActivity extends AppCompatActivity {
 
     EditText toDate;
 
+    Switch maSwitch;
+
+    CheckBox maCheck50;
+
+    CheckBox maCheck200;
+
+    final String MA_50_CHECKED = "50_CHECKED";
+    final String MA_200_CHECKED = "200_CHECKED";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,11 +48,52 @@ public class AddStockActivity extends AppCompatActivity {
 
         toDate = (EditText) findViewById(R.id.toDate);
 
+        maSwitch = (Switch) findViewById(R.id.maSwitch);
+
+        maCheck50 = (CheckBox) findViewById(R.id.check50);
+
+        maCheck200 = (CheckBox) findViewById(R.id.check200);
+
+        maSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+                if(checked){
+                    maCheck50.setVisibility(View.VISIBLE);
+                    maCheck200.setVisibility(View.VISIBLE);
+                }else{
+                    maCheck50.setChecked(false);
+                    maCheck200.setChecked(false);
+                    maCheck50.setVisibility(View.INVISIBLE);
+                    maCheck200.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
+
         try{
             Intent intent = getIntent();
             String symbol = intent.getStringExtra("symbol");
-            if(symbol.length() > 0) {
+            String fromDate = intent.getStringExtra("fromDate");
+            String toDate = intent.getStringExtra("toDate");
+            String movingAverage = intent.getStringExtra("movingAverage");
+            if(symbol != null && symbol.length() > 0) {
                 stockName.setText(symbol);
+            }
+            if(fromDate != null && fromDate.length() > 0) {
+                this.fromDate.setText(fromDate);
+            }
+            if(toDate != null && toDate.length() > 0) {
+                this.toDate.setText(toDate);
+            }
+            if(movingAverage != null && movingAverage.length() > 0) {
+                maSwitch.setChecked(true);
+                if(movingAverage.equals(MA_50_CHECKED+MA_200_CHECKED)) {
+                    maCheck50.setChecked(true);
+                    maCheck200.setChecked(true);
+                }else if(movingAverage.equals(MA_50_CHECKED)) {
+                    maCheck50.setChecked(true);
+                }else{
+                    maCheck200.setChecked(true);
+                }
             }
         }catch(Exception e) {
             //do nothing.
@@ -144,8 +197,15 @@ public class AddStockActivity extends AppCompatActivity {
         }
 
         Intent intent = new Intent();
+        StringBuffer maSb = new StringBuffer("");
+        if(maCheck50.isChecked()) maSb.append(MA_50_CHECKED);
+        if(maCheck200.isChecked()) maSb.append(MA_200_CHECKED);
 
-        intent.putExtra("result", stockSymbol + "," + fromDateStr + "," + toDateStr+","+name);
+        intent.putExtra("symbol", stockSymbol);
+        intent.putExtra("fromDate", fromDateStr);
+        intent.putExtra("toDate", toDateStr);
+        intent.putExtra("name", name);
+        intent.putExtra("movingAverage", maSb.toString());
         setResult(RESULT_OK, intent);
 
         finish();

@@ -55,7 +55,9 @@ public class WebStockDataRetriever implements StockDataRetriever {
       URL url = new URL("https://download.finance.yahoo.com/d/quotes.csv?"
               +
               "s=" + stockSymbol + "&f=n&e=.csv");
-      output = new Scanner(url.openStream()).next();
+      output = new Scanner(url.openStream()).nextLine();
+      output = output.substring(1, output.length()-1);
+      System.out.println(output);
     }catch(Exception e) {
       throw new IllegalArgumentException("Invalid url format or scanner reading error.");
     }

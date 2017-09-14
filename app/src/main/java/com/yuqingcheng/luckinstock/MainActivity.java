@@ -56,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
 
     static int UPDATE_STOCK_TO_DISPLAY = 0;
     static int DELETE_CONFIRMATION = 1;
+    static float MA_50_COLOR_RATIO = 0.85f;
+    static float MA_200_COLOR_RATIO = 0.7f;
 
     Set<Integer> colors;
 
@@ -116,9 +118,9 @@ public class MainActivity extends AppCompatActivity {
 
         dateParseMap = new HashMap<>();
 
-        colors = new HashSet<Integer>(Arrays.asList(new Integer[]{ Color.WHITE, Color.BLUE, Color.RED, Color.YELLOW,
-                Color.LTGRAY, Color.CYAN, Color.MAGENTA, Color.GREEN, Color.GRAY }));
-
+        colors = new HashSet<Integer>(Arrays.asList(new Integer[]{ Color.rgb(235, 70, 70),
+                Color.rgb(103, 113, 245), Color.rgb(149, 216, 245), Color.rgb(239, 223, 80),
+                Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(252, 3, 252), Color.rgb(88, 239, 93)}));
 
         listView = (ListView) findViewById(R.id.listView);
 
@@ -184,7 +186,9 @@ public class MainActivity extends AppCompatActivity {
             ImageButton delete = (ImageButton) rowView.findViewById(R.id.delete);
 
             symbol.setText(symbols.get(position));
-            //FIXME: color.setImageDrawable(new ColorDrawable(#rgb));
+
+            int plotColor = colorMap.get(symbols.get(position));
+            color.setImageDrawable(new ColorDrawable(plotColor));
             name.setText(listViewNameMap.get(symbols.get(position)));
 
             edit.setOnClickListener(new View.OnClickListener() {
@@ -304,10 +308,6 @@ public class MainActivity extends AppCompatActivity {
 
                 seriesXMap.remove(name);
                 seriesYMap.remove(name);
-
-                formatterMap.remove(name);
-                colors.add(colorMap.get(name));
-                colorMap.remove(name);
             }
         }
 
@@ -316,14 +316,6 @@ public class MainActivity extends AppCompatActivity {
                     || curveUpdateMap.get(name) != newCurveUpdateMap.get(name)) {
                 changed = true;
 
-                if(!curveUpdateMap.containsKey(name)){
-                    int color = colors.iterator().next();
-                    LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
-
-                    colors.remove(color);
-                    colorMap.put(name, color);
-                    formatterMap.put(name, formatter);
-                }
                 curveUpdateMap.put(name, newCurveUpdateMap.get(name));
                 seriesXMap.put(name, newXMap.get(name));
                 seriesYMap.put(name, newYMap.get(name));
@@ -384,28 +376,42 @@ public class MainActivity extends AppCompatActivity {
 
             if(resultCode == Activity.RESULT_OK){
 
-                String result = data.getStringExtra("result");
-                String[] strs = result.split(",");
+                String symbol = data.getStringExtra("symbol");
+                String fromDate = data.getStringExtra("fromDate");
+                String toDate = data.getStringExtra("toDate");
+                String name = data.getStringExtra("name");
+                String movingAverage = data.getStringExtra("movingAverage");
 
                 boolean listViewUpdated = true;
 
                 for(String each : this.listViewSymbols) {
-                    if(each.equals(strs[0])) {
+                    if(each.equals(symbol)) {
                         listViewUpdated = false;
                         break;
                     }
                 }
 
                 if(listViewUpdated){
-                    listViewSymbols.add(strs[0]);
-                    listViewNameMap.put(strs[0], strs[3]);
+                    if(colors.isEmpty()){
+                        Toast toast = Toast.makeText(this, "Please delete some plots before adding new plot.", Toast.LENGTH_LONG);
+                        toast.show();
+                        return;
+                    }
+                    listViewSymbols.add(symbol);
+                    listViewNameMap.put(symbol, name);
+                    int color = colors.iterator().next();
+                    LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
+
+                    colors.remove(color);
+                    colorMap.put(symbol, color);
+                    formatterMap.put(symbol, formatter);
                     listViewAdapter.notifyDataSetChanged();
                 }
 
                 AddDisplayedItemsTask addDisplayedItemsTask = new AddDisplayedItemsTask();
 
                 try{
-                    if(addDisplayedItemsTask.execute(strs[0], strs[1], strs[2]).get()) {
+                    if(addDisplayedItemsTask.execute(symbol, fromDate, toDate).get()) {
 
                         refreshPlot();
 
@@ -427,9 +433,11 @@ public class MainActivity extends AppCompatActivity {
                 this.analyzer.removeDisplayedItem(symbol);
                 this.listViewSymbols.remove(symbol);
                 this.listViewNameMap.remove(symbol);
+                colors.add(colorMap.get(symbol));
+                colorMap.remove(symbol);
+                formatterMap.remove(symbol);
                 this.listViewAdapter.notifyDataSetChanged();
                 refreshPlot();
-
             }
             if (resultCode == Activity.RESULT_CANCELED) {
                 //Write your code if there's no result

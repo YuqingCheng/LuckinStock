@@ -2,16 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/listItem"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_width="220dp"
+    android:layout_height="38dp"
     android:orientation="horizontal">
 
     <ImageView
         android:id="@+id/color"
         android:layout_width="1dp"
-        android:layout_height="1dp"
+        android:layout_height="5dp"
         android:layout_margin="10dp"
-        android:layout_weight="1"
+        android:layout_weight="0.29"
         app:srcCompat="@color/colorAccent" />
 
     <LinearLayout
@@ -22,16 +22,18 @@
 
         <TextView
             android:id="@+id/symbol"
-            android:layout_width="match_parent"
+            android:layout_width="90dp"
             android:layout_height="wrap_content"
+            android:maxWidth="90dp"
             android:text="TextView"
             android:textSize="16dp" />
 
         <TextView
             android:id="@+id/name"
-            android:layout_width="match_parent"
+            android:layout_width="90dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:maxWidth="90dp"
             android:text="TextView"
             android:textSize="10dp" />
     </LinearLayout>
@@ -40,6 +42,7 @@
         android:id="@+id/edit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="right"
         android:layout_weight="1"
         android:background="@color/ap_transparent"
         android:duplicateParentState="true"
@@ -49,6 +52,7 @@
         android:id="@+id/delete"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="right"
         android:layout_weight="1"
         android:background="@color/ap_transparent"
         app:srcCompat="@android:drawable/ic_menu_close_clear_cancel" />
