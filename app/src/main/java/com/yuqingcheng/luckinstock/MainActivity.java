@@ -72,6 +72,10 @@ public class MainActivity extends AppCompatActivity {
 
     Map<String, String> listViewNameMap;
 
+    Map<String, String> fromDateMap;
+
+    Map<String, String> toDateMap;
+
     ListView listView;
 
     Map<String, List<Integer>> seriesXMap; // local stock date data of each plot.
@@ -84,11 +88,13 @@ public class MainActivity extends AppCompatActivity {
 
     Map<String, List<Double>> maYMap;
 
+    Map<String, Integer> maUpdateMap; // detect change in same ma curve.
+
     XYPlot plot;
 
     Map<String, LineAndPointFormatter> formatterMap;
 
-    Map<String, Integer> colorMap; // FIXME: could be deleted
+    Map<String, Integer> colorMap;
 
     Set<Integer> dates;
 
@@ -111,6 +117,10 @@ public class MainActivity extends AppCompatActivity {
 
         curveUpdateMap = new HashMap<>();
 
+        fromDateMap = new HashMap<>();
+
+        toDateMap = new HashMap<>();
+
         plot = (XYPlot) findViewById(R.id.plot);
 
         seriesXMap = new HashMap<>();
@@ -120,6 +130,8 @@ public class MainActivity extends AppCompatActivity {
         maXMap = new HashMap<>();
 
         maYMap = new HashMap<>();
+
+        maUpdateMap = new HashMap<>();
 
         formatterMap = new HashMap<>();
 
@@ -189,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
             LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View rowView = inflater.inflate(R.layout.list_item, parent, false);
 
-            TextView symbol = (TextView) rowView.findViewById(R.id.symbol);
+            final TextView symbol = (TextView) rowView.findViewById(R.id.symbol);
 
             ImageView color = (ImageView) rowView.findViewById(R.id.color);
 
@@ -209,6 +221,16 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     Intent intent = new Intent(getApplicationContext(), AddStockActivity.class);
                     intent.putExtra("symbol", symbols.get(position));
+                    intent.putExtra("fromDate", fromDateMap.get(symbols.get(position)));
+                    intent.putExtra("toDate", toDateMap.get(symbols.get(position)));
+                    String movingAverage = "";
+                    if(maXMap.containsKey(symbols.get(position)+MA_50_SERIES_POSTFIX)){
+                        movingAverage += MA_50_CHECKED;
+                    }
+                    if(maXMap.containsKey(symbols.get(position)+MA_200_SERIES_POSTFIX)){
+                        movingAverage += MA_200_CHECKED;
+                    }
+                    intent.putExtra("movingAverage", movingAverage);
 
                     startActivityForResult(intent, UPDATE_STOCK_TO_DISPLAY);
 
@@ -308,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void refreshPlot() {
         Map<String, Integer> newCurveUpdateMap = analyzer.getCurveUpdateMap();
+        Map<String, Integer> newMaUpdateMap = analyzer.getMaUpdateMap();
         Map<String, List<Integer>> newXMap = analyzer.getXMap();
         Map<String, List<Double>> newYMap = analyzer.getYMap();
         boolean changed = false;
@@ -330,7 +353,6 @@ public class MainActivity extends AppCompatActivity {
             if(!curveUpdateMap.containsKey(name)
                     || curveUpdateMap.get(name) != newCurveUpdateMap.get(name)) {
                 changed = true;
-
                 curveUpdateMap.put(name, newCurveUpdateMap.get(name));
                 seriesXMap.put(name, newXMap.get(name));
                 seriesYMap.put(name, newYMap.get(name));
@@ -338,10 +360,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //check removed ma plots.
-        Set<String> currMaNames = new HashSet(maXMap.keySet());
+        Set<String> currMaNames = new HashSet(maUpdateMap.keySet());
         for(String name : currMaNames) {
-            if(!newXMap.containsKey(name)) {
+            if(!newMaUpdateMap.containsKey(name)) {
                 changed = true;
+                maUpdateMap.remove(name);
                 maXMap.remove(name);
                 maYMap.remove(name);
             }
@@ -349,10 +372,11 @@ public class MainActivity extends AppCompatActivity {
 
         //check added moving average, note that newCurveUpdateMap doesn't have ma information,
         // but newXMap has.
-        for(String name : newXMap.keySet()) {
-            System.out.println("###### "+name);
-            if(!curveUpdateMap.containsKey(name) && !maXMap.containsKey(name)) {
+        for(String name : newMaUpdateMap.keySet()) {
+            if(!maUpdateMap.containsKey(name)
+                    || maUpdateMap.get(name) != newMaUpdateMap.get(name)) {
                 changed = true;
+                maUpdateMap.put(name, newMaUpdateMap.get(name));
                 maXMap.put(name, newXMap.get(name));
                 maYMap.put(name, newYMap.get(name));
             }
@@ -395,7 +419,7 @@ public class MainActivity extends AppCompatActivity {
             plot.addSeries(new SimpleXYSeries(tempList, this.seriesYMap.get(name), name), this.formatterMap.get(name));
         }
 
-        for(String maName : this.maXMap.keySet()) {
+        for(String maName : this.maUpdateMap.keySet()) {
             List<Integer> tempList = new ArrayList<>();
             for(Integer date : this.maXMap.get(maName)) {
                 tempList.add(this.dateValueMap.get(date));
@@ -432,6 +456,10 @@ public class MainActivity extends AppCompatActivity {
                 String toDate = data.getStringExtra("toDate");
                 String name = data.getStringExtra("name");
                 String movingAverage = data.getStringExtra("movingAverage");
+
+                fromDateMap.put(symbol, fromDate);
+
+                toDateMap.put(symbol, toDate);
 
                 boolean listViewUpdated = true;
 
@@ -474,10 +502,14 @@ public class MainActivity extends AppCompatActivity {
                             }// two tasks run one after another to avoid concurrency of editing maps in analyzer.
 
                         } else if(movingAverage.equals(MA_50_CHECKED)){
+                            this.analyzer.removeMovingAverage(symbol, 200);
                             if(addMovingAverageTask1.execute(symbol, "50").get()) refreshPlot();
                         }else if(movingAverage.equals(MA_200_CHECKED)){
+                            this.analyzer.removeMovingAverage(symbol, 50);
                             if(addMovingAverageTask1.execute(symbol, "200").get()) refreshPlot();
                         }else{
+                            this.analyzer.removeMovingAverage(symbol, 50);
+                            this.analyzer.removeMovingAverage(symbol, 200);
                             refreshPlot();
                         }
 
@@ -498,8 +530,12 @@ public class MainActivity extends AppCompatActivity {
                 String symbol = data.getStringExtra("symbol");
                 System.out.println(symbol);
                 this.analyzer.removeDisplayedItem(symbol);
+                this.analyzer.removeMovingAverage(symbol, 50);
+                this.analyzer.removeMovingAverage(symbol, 200);
                 this.listViewSymbols.remove(symbol);
                 this.listViewNameMap.remove(symbol);
+                this.fromDateMap.remove(symbol);
+                this.toDateMap.remove(symbol);
                 colors.add(colorMap.get(symbol));
                 colorMap.remove(symbol);
                 formatterMap.remove(symbol);

@@ -35,6 +35,8 @@ public class MyStockAnalyzer implements StockAnalyzer {
 
   private Map<String, Integer> curveUpdateMap; // used to detect updated curves compared to view
 
+  private Map<String, Integer> maUpdateMap;
+
   private Strategy strategy;
 
   /**
@@ -47,6 +49,7 @@ public class MyStockAnalyzer implements StockAnalyzer {
     this.xMap = new HashMap<>();
     this.yMap = new HashMap<>();
     this.curveUpdateMap = new HashMap<>();
+    this.maUpdateMap = new HashMap<>();
   }
 
 
@@ -131,6 +134,11 @@ public class MyStockAnalyzer implements StockAnalyzer {
   public Map<String, List<Double>> getYMap() { return this.yMap; }
 
   public Map<String, Integer> getCurveUpdateMap() { return this.curveUpdateMap; }
+
+  @Override
+  public Map<String, Integer> getMaUpdateMap() {
+    return maUpdateMap;
+  }
 
   /**
    * Get the content of the basket in the form of a Map.
@@ -259,7 +267,14 @@ public class MyStockAnalyzer implements StockAnalyzer {
         this.xMap.remove(each);
       }
     }
+  }
 
+  @Override
+  public void removeMovingAverage(String symbol, int days) {
+    String movingAverageName = symbol+"-MA-"+days;
+    this.maUpdateMap.remove(movingAverageName);
+    this.xMap.remove(movingAverageName);
+    this.yMap.remove(movingAverageName);
   }
 
   /**
@@ -295,12 +310,16 @@ public class MyStockAnalyzer implements StockAnalyzer {
       yValues.add(entry.getValue());
     }
     String maSymbol = name+"-MA-"+x;
+
+    if(!maUpdateMap.containsKey(maSymbol)) {
+      maUpdateMap.put(maSymbol, 0);
+    }else{
+      maUpdateMap.put(maSymbol, maUpdateMap.get(maSymbol)+1);
+    }
+
     displayedItems.put(maSymbol, result);
     xMap.put(maSymbol, xValues);
     yMap.put(maSymbol, yValues);
-    for(String curve : xMap.keySet()) {
-      System.out.println("###### "+curve);
-    }
   }
 
   /**

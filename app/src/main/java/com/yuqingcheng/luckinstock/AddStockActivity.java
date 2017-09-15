@@ -75,6 +75,7 @@ public class AddStockActivity extends AppCompatActivity {
             String fromDate = intent.getStringExtra("fromDate");
             String toDate = intent.getStringExtra("toDate");
             String movingAverage = intent.getStringExtra("movingAverage");
+
             if(symbol != null && symbol.length() > 0) {
                 stockName.setText(symbol);
             }
@@ -132,7 +133,6 @@ public class AddStockActivity extends AppCompatActivity {
         protected Boolean doInBackground(String... strings) {
 
             boolean res = analyzer.isValidDateRange(strings[0], strings[1]);
-            Log.i("date range valid:", ""+res);
             return res;
         }
 

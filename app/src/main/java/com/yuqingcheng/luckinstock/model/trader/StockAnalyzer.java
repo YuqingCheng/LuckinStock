@@ -27,6 +27,9 @@ public interface StockAnalyzer {
 
   Map<String, Integer> getCurveUpdateMap();
 
+    Map<String, Integer> getMaUpdateMap();
+
+
   Map<String, Integer> getBasketContent(String basketName) throws IllegalArgumentException;
 
   void addStockOrBasketHistoricalDataToDisplayedItems(String name, Object fromDate, Object toDate);
@@ -34,6 +37,8 @@ public interface StockAnalyzer {
   Map<String, Map<Integer, Double>> getDisplayedItems();
 
   void removeDisplayedItem(String itemName);
+
+  void removeMovingAverage(String symbol, int days);
 
   void addMovingAverageForExistingDisplayedItems(String name, int x);
 
