@@ -55,14 +55,14 @@ import java.util.TreeSet;
 
 public class MainActivity extends AppCompatActivity {
 
-    static int UPDATE_STOCK_TO_DISPLAY = 0;
-    static int DELETE_CONFIRMATION = 1;
-    static float MA_50_COLOR_RATIO = 0.75f;
-    static float MA_200_COLOR_RATIO = 0.6f;
-    final String MA_50_CHECKED = "50_CHECKED";
-    final String MA_200_CHECKED = "200_CHECKED";
-    final String MA_50_SERIES_POSTFIX ="-MA-50";
-    final String MA_200_SERIES_POSTFIX = "-MA-200";
+    final static int UPDATE_STOCK_TO_DISPLAY = 0;
+    final static int DELETE_CONFIRMATION = 1;
+    final static float MA_50_COLOR_RATIO = 0.75f;
+    final static float MA_200_COLOR_RATIO = 0.6f;
+    final static String MA_50_CHECKED = "50_CHECKED";
+    final static  String MA_200_CHECKED = "200_CHECKED";
+    final static String MA_50_SERIES_POSTFIX ="-MA-50";
+    final static String MA_200_SERIES_POSTFIX = "-MA-200";
 
     Set<Integer> colors;
 
@@ -143,9 +143,9 @@ public class MainActivity extends AppCompatActivity {
 
         dateParseMap = new HashMap<>();
 
-        colors = new HashSet<Integer>(Arrays.asList(new Integer[]{ Color.rgb(235, 70, 70),
+        colors = new HashSet<Integer>(Arrays.asList(new Integer[]{ Color.rgb(252, 40, 252),
                 Color.rgb(103, 113, 245), Color.rgb(149, 216, 245), Color.rgb(239, 223, 80),
-                Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(252, 3, 252), Color.rgb(88, 239, 93)}));
+                Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(235, 70, 70), Color.rgb(88, 239, 93)}));
 
         listView = (ListView) findViewById(R.id.listView);
 
@@ -528,7 +528,6 @@ public class MainActivity extends AppCompatActivity {
         } else if(requestCode == DELETE_CONFIRMATION) {
             if(resultCode == Activity.RESULT_OK) {
                 String symbol = data.getStringExtra("symbol");
-                System.out.println(symbol);
                 this.analyzer.removeDisplayedItem(symbol);
                 this.analyzer.removeMovingAverage(symbol, 50);
                 this.analyzer.removeMovingAverage(symbol, 200);
