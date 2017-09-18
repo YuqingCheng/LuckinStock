@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.vision.text.Text;
 import com.parse.Parse;
@@ -23,6 +24,7 @@ import com.parse.SignUpCallback;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class LandingActivity extends AppCompatActivity {
@@ -36,6 +38,9 @@ public class LandingActivity extends AppCompatActivity {
     Button addBasket;
     Button strategySimulation;
     ParseUser currentUser;
+    String basketJSONStr;
+    String basketDateJSONstr;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +66,10 @@ public class LandingActivity extends AppCompatActivity {
 
         userName = (TextView) findViewById(R.id.userName);
 
+        basketJSONStr = "";
+
+        basketDateJSONstr = "";
+
         /*
 
         Map<String, Map<String, Integer>> jsonMap = new HashMap<>();
@@ -76,22 +85,29 @@ public class LandingActivity extends AppCompatActivity {
         Log.i("JSON", jsonObject.toString());
         */
 
-
-
-
-
-
-        if(isLogin) {
-            currentUser = ParseUser.getCurrentUser();
-
-            userName.setText(currentUser.getUsername());
-
-        }
+        loginRefresh();
 
         ParseACL defaultACL = new ParseACL();
         defaultACL.setPublicReadAccess(true);
         defaultACL.setPublicWriteAccess(true);
         ParseACL.setDefaultACL(defaultACL, true);
+    }
+
+    /**
+     * refresh in-class field data to up-to-date login-in status.
+     */
+    private void loginRefresh() {
+        if(isLogin) {
+            currentUser = ParseUser.getCurrentUser();
+            basketJSONStr = currentUser.getString("baskets");
+            basketDateJSONstr = currentUser.getString("basketDates");
+            userName.setText(currentUser.getUsername());
+        }else{
+            currentUser = null;
+            basketJSONStr = "";
+            basketDateJSONstr = "";
+            userName.setText("Hi, visitor!\nClick avatar to sign up/log in");
+        }
     }
 
     public void toAnalysis(View view) {
@@ -107,9 +123,16 @@ public class LandingActivity extends AppCompatActivity {
     }
 
     public void manageBaskets(View view) {
-        Intent intent = new Intent(this, ManageBasketActivity.class);
 
-        startActivityForResult(intent, MANAGE_BASKET);
+        if(isLogin) {
+            Intent intent = new Intent(this, ManageBasketActivity.class);
+            intent.putExtra("baskets", basketJSONStr);
+            intent.putExtra("basketDates", basketDateJSONstr);
+            startActivityForResult(intent, MANAGE_BASKET);
+        }else{
+            Toast.makeText(this, "Please log in to continue.", Toast.LENGTH_SHORT).show();
+        }
+
     }
 
     @Override
@@ -118,13 +141,8 @@ public class LandingActivity extends AppCompatActivity {
 
         if(requestCode == SIGNUP_LOGININ){
             if(resultCode == Activity.RESULT_OK) {
-                boolean loggedIn = data.getBooleanExtra("loggedIn", false);
-
-                if(loggedIn) {
-                    isLogin = true;
-                    currentUser = ParseUser.getCurrentUser();
-                    userName.setText(currentUser.getUsername());
-                }
+                isLogin = data.getBooleanExtra("loggedIn", false);
+                loginRefresh();
             }
         }
     }

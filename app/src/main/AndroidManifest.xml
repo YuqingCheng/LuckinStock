@@ -25,7 +25,10 @@
             </intent-filter>
         </activity>
         <activity android:name=".ManageBasketActivity" />
-        <activity android:name=".SignupLoginActivity"></activity>
+        <activity android:name=".SignupLoginActivity" />
+        <activity android:name=".Main2Activity" />
+        <activity android:name=".EditBasketActivity" />
+        <activity android:name=".EditStockInBasketActivity"></activity>
     </application>
 
 </manifest>

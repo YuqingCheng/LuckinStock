@@ -35,7 +35,7 @@
         android:layout_alignStart="@+id/avatar"
         android:layout_below="@+id/analysisButton"
         android:onClick="manageBaskets"
-        android:text="Add Basket" />
+        android:text="My Baskets" />
 
     <Button
         android:id="@+id/button4"
