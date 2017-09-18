@@ -144,6 +144,15 @@ public class LandingActivity extends AppCompatActivity {
                 isLogin = data.getBooleanExtra("loggedIn", false);
                 loginRefresh();
             }
+        }else if(requestCode == MANAGE_BASKET) {
+            if(resultCode == RESULT_OK){
+                try{
+                    basketJSONStr = data.getStringExtra("basketJSONStr");
+                    basketDateJSONstr = data.getStringExtra("basketDateJSONStr");
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

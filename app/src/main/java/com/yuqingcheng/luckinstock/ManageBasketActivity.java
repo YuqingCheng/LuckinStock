@@ -6,6 +6,7 @@ import android.app.DialogFragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -38,11 +39,16 @@ public class ManageBasketActivity extends AppCompatActivity {
     final int DELETE_BASKET_CONFIRMATION = 1;
     final int EDIT_STOCK_SHARES = 2;
     final int DELETE_STOCK_IN_BASKET = 3;
+    final int TEXT_LENGTH_LIMIT = 30;
+
+    final int hoveredColor = Color.argb(50, 15, 15, 15);
+    final int unhoverdColor = Color.argb(0, 255, 255, 255);
+
 
     ImageButton addBasket;
     ListView basketsListView;
     ListView stockShareListView;
-    Map<String, Map<String, Integer>> baskets;
+    public Map<String, Map<String, Integer>> baskets;
     Map<String, Integer> basketDates;
     View hovered;
     String hoveredBasket;
@@ -79,11 +85,6 @@ public class ManageBasketActivity extends AppCompatActivity {
                     String valKey = valIte.next();
                     valMap.put(valKey, valJSON.getInt(valKey));
                 }
-                //Log.i("on create: key", key);
-                //for(String k : ((Map<String, Integer>) basketJSON.get(key)).keySet()) {
-                  //  Log.i("on create1: k", k);
-                  // Log.i("on create1: value", ""+((Map<String, Integer>) basketJSON.get(key)).get(k));
-                //}
                 baskets.put(key, valMap);
             }
             ite = basketDateJSON.keys();
@@ -119,6 +120,7 @@ public class ManageBasketActivity extends AppCompatActivity {
             super(context, -1, names);
             this.context = context;
             this.names = names;
+
         }
 
         @Override
@@ -137,12 +139,14 @@ public class ManageBasketActivity extends AppCompatActivity {
 
             ImageButton edit = (ImageButton) rowView.findViewById(R.id.editBasket);
 
-            basketName.setText(names.get(position));
-
+            if(names.get(position).length() > TEXT_LENGTH_LIMIT) {
+                basketName.setText(names.get(position).substring(0, TEXT_LENGTH_LIMIT)+"..");
+            }else{
+                basketName.setText(names.get(position));
+            }
             StringBuffer info = new StringBuffer();
 
             try {
-
                 info.append(new SimpleDateFormat("yy-MMM-dd")
                         .format(new SimpleDateFormat("yyyyMMdd")
                                 .parse("" + date)).toString());
@@ -158,12 +162,11 @@ public class ManageBasketActivity extends AppCompatActivity {
             if(info.charAt(info.length()-1) == ' ') info.deleteCharAt(info.length()-1);
             if(info.charAt(info.length()-1) == ',') info.deleteCharAt(info.length()-1);
 
-            if(info.length() > 50) {
-                basketInfo.setText(info.substring(0, 50)+"..");
+            if(info.length() > TEXT_LENGTH_LIMIT) {
+                basketInfo.setText(info.substring(0, TEXT_LENGTH_LIMIT)+"..");
             }else{
                 basketInfo.setText(info.toString());
             }
-
 
             rowView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -361,11 +364,15 @@ public class ManageBasketActivity extends AppCompatActivity {
     }
 
     public void addStockToBasket(View view) {
-        Intent intent = new Intent(this, EditStockInBasketActivity.class);
-        intent.putExtra("basketName", hoveredBasket);
-        intent.putExtra("stockSymbol", "");
-        intent.putExtra("numShares", "");
-        startActivityForResult(intent, EDIT_STOCK_SHARES);
+        if(hoveredBasket.length() > 0) {
+            Intent intent = new Intent(this, EditStockInBasketActivity.class);
+            intent.putExtra("basketName", hoveredBasket);
+            intent.putExtra("stockSymbol", "");
+            intent.putExtra("numShares", "");
+            startActivityForResult(intent, EDIT_STOCK_SHARES);
+        }else{
+            Toast.makeText(getApplicationContext(), "Please select a basket first", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -378,7 +385,6 @@ public class ManageBasketActivity extends AppCompatActivity {
                     String name = data.getStringExtra("basketName");
                     int date = data.getIntExtra("date", -1);
                     String formerName = data.getStringExtra("formerBasketName");
-                    Log.i("name/date/formerName", name+"/"+date+"/"+formerName);
 
                     if(formerName.length() > 0) {
                         Map<String, Integer> stockMap = baskets.get(formerName);
@@ -386,6 +392,7 @@ public class ManageBasketActivity extends AppCompatActivity {
                         basketDates.remove(formerName);
                         baskets.put(name, stockMap);
                         basketDates.put(name, date);
+                        Log.i("name/date/formerName", name+"/"+date+"/"+formerName);
                     }else{
                         baskets.put(name, new HashMap<String, Integer>());
                         basketDates.put(name, date);
@@ -423,7 +430,6 @@ public class ManageBasketActivity extends AppCompatActivity {
                     String basketName = data.getStringExtra("basketName");
                     String stockSymbol = data.getStringExtra("stockSymbol");
                     int numShares = data.getIntExtra("numShares", -1);
-                    Log.i("basket/symbol/share", basketName+"/"+stockSymbol+"/"+numShares);
                     baskets.get(basketName).put(stockSymbol, numShares);
                     updateBasketDataToServer();
                 }catch (Exception e) {
@@ -437,7 +443,6 @@ public class ManageBasketActivity extends AppCompatActivity {
     private void updateListView() {
         basketNames.clear();
         for(String key : baskets.keySet()) {
-            Log.i("on update:", key);
             basketNames.add(key);
         }
         if(!baskets.containsKey(hoveredBasket)) hoveredBasket = "";
@@ -458,14 +463,20 @@ public class ManageBasketActivity extends AppCompatActivity {
 
     private void updateBasketDataToServer() {
         ParseUser user = ParseUser.getCurrentUser();
-        user.put("baskets", new JSONObject(baskets).toString());
-        user.put("basketDates", new JSONObject(basketDates).toString());
+        final String basketJSONStr = new JSONObject(baskets).toString();
+        final String basketDateJSONStr = new JSONObject(basketDates).toString();
+        user.put("baskets", basketJSONStr);
+        user.put("basketDates", basketDateJSONStr);
 
         user.saveInBackground(new SaveCallback() {
             @Override
             public void done(ParseException e) {
                 if(e == null) {
                     updateListView();
+                    Intent intent = new Intent();
+                    intent.putExtra("basketJSONStr", basketJSONStr);
+                    intent.putExtra("basketDateJSONStr", basketDateJSONStr);
+                    setResult(RESULT_OK, intent);
 
                     Toast.makeText(getApplicationContext(), "Basket information saved.",Toast.LENGTH_SHORT);
 
@@ -479,10 +490,12 @@ public class ManageBasketActivity extends AppCompatActivity {
 
     protected void setHoverListItem(View view) {
         if (hovered != null) {
+            hovered.setBackgroundColor(unhoverdColor);
             hovered.setHovered(false);
         }
         hovered = view;
         hovered.setHovered(true);
+        hovered.setBackgroundColor(hoveredColor);
     }
 
 }
