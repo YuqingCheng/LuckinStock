@@ -62,6 +62,7 @@ public class ManageBasketActivity extends AppCompatActivity {
         baskets = new HashMap<>();
         basketDates = new HashMap<>();
         hoveredBasket = "";
+        basketNames = new ArrayList<>();
 
         try{
             Intent intent = getIntent();
@@ -70,7 +71,20 @@ public class ManageBasketActivity extends AppCompatActivity {
             Iterator<String> ite = basketJSON.keys();
             while(ite.hasNext()) {
                 String key = ite.next();
-                baskets.put(key, (Map<String, Integer>)basketJSON.get(key));
+                JSONObject valJSON = basketJSON.getJSONObject(key);
+                Map<String, Integer> valMap = new HashMap<>();
+                Iterator<String> valIte = valJSON.keys();
+
+                while(valIte.hasNext()) {
+                    String valKey = valIte.next();
+                    valMap.put(valKey, valJSON.getInt(valKey));
+                }
+                //Log.i("on create: key", key);
+                //for(String k : ((Map<String, Integer>) basketJSON.get(key)).keySet()) {
+                  //  Log.i("on create1: k", k);
+                  // Log.i("on create1: value", ""+((Map<String, Integer>) basketJSON.get(key)).get(k));
+                //}
+                baskets.put(key, valMap);
             }
             ite = basketDateJSON.keys();
             while(ite.hasNext()){
@@ -78,10 +92,8 @@ public class ManageBasketActivity extends AppCompatActivity {
                 basketDates.put(key, basketDateJSON.getInt(key));
             }
         }catch(Exception e) {
-
+            e.printStackTrace();
         }
-
-        basketNames = new ArrayList(baskets.keySet());
 
         basketListViewAdapter = new BasketListViewAdapter(this, basketNames);
 
@@ -93,6 +105,7 @@ public class ManageBasketActivity extends AppCompatActivity {
 
         stockShareListView.setAdapter(stockShareListViewAdapter);
 
+        updateListView();
     }
 
     /**
@@ -120,9 +133,9 @@ public class ManageBasketActivity extends AppCompatActivity {
 
             TextView basketInfo = (TextView) rowView.findViewById(R.id.basketInfo);
 
-            ImageButton delete = (ImageButton) rowView.findViewById(R.id.delete);
+            ImageButton delete = (ImageButton) rowView.findViewById(R.id.deleteBasket);
 
-            ImageButton edit = (ImageButton) rowView.findViewById(R.id.edit);
+            ImageButton edit = (ImageButton) rowView.findViewById(R.id.editBasket);
 
             basketName.setText(names.get(position));
 
@@ -208,19 +221,12 @@ public class ManageBasketActivity extends AppCompatActivity {
      */
     private class StockShareListViewAdapter extends ArrayAdapter<String> {
         private final Context context;
-        private final List<String> stocks;
-        private final List<String> shares;
+        private final List<String> stocksAndShares;
 
         public StockShareListViewAdapter(Context context, List<String> data) {
             super(context, -1, data);
             this.context = context;
-            this.stocks = new ArrayList<>();
-            this.shares = new ArrayList<>();
-            for (String each : data) {
-                String[] strs = each.split(",");
-                this.stocks.add(strs[0]);
-                this.shares.add(strs[1]);
-            }
+            this.stocksAndShares = data;
         }
 
         @Override
@@ -228,21 +234,25 @@ public class ManageBasketActivity extends AppCompatActivity {
             LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View rowView = inflater.inflate(R.layout.stock_in_basket_list_view, parent, false);
 
-            TextView stock = (TextView) findViewById(R.id.textView10);
-            TextView info = (TextView) findViewById(R.id.stockInfo);
-            stock.setText(stocks.get(position));
-            info.setText("shares: "+shares.get(position));
+            TextView stock = (TextView) rowView.findViewById(R.id.stockSymbolInList);
+            TextView info = (TextView) rowView.findViewById(R.id.stockInfo);
+            final String[] strs= stocksAndShares.get(position).split(",");
 
-            ImageButton edit = (ImageButton) findViewById(R.id.edit);
-            ImageButton delete = (ImageButton) findViewById(R.id.delete);
+            Log.i("strs[0], strs[1]", strs[0]+", "+strs[1]);
+
+            stock.setText(strs[0]);
+            info.setText("shares: "+strs[1]);
+
+            ImageButton edit = (ImageButton) rowView.findViewById(R.id.editStockInBasket);
+            ImageButton delete = (ImageButton) rowView.findViewById(R.id.deleteStockInBasket);
 
             edit.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     Intent intent = new Intent(context, EditStockInBasketActivity.class);
                     intent.putExtra("basketName", hoveredBasket);
-                    intent.putExtra("stockSymbol", stocks.get(position));
-                    intent.putExtra("numShares", shares.get(position));
+                    intent.putExtra("stockSymbol", strs[0]);
+                    intent.putExtra("numShares", strs[1]);
 
                     startActivityForResult(intent, EDIT_STOCK_SHARES);
 
@@ -254,7 +264,7 @@ public class ManageBasketActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     DialogFragment dialog = new ManageBasketDialog();
                     Bundle args = new Bundle();
-                    args.putString(ManageBasketDialog.STOCK_SYMBOL, stocks.get(position));
+                    args.putString(ManageBasketDialog.STOCK_SYMBOL, strs[0]);
                     args.putString(ManageBasketDialog.BASKET_NAME, hoveredBasket);
 
                     dialog.setArguments(args);
@@ -380,7 +390,7 @@ public class ManageBasketActivity extends AppCompatActivity {
                         baskets.put(name, new HashMap<String, Integer>());
                         basketDates.put(name, date);
                     }
-                    updateBasketDataToServerAndListView();
+                    updateBasketDataToServer();
                 }catch(Exception e) {
 
                 }
@@ -391,7 +401,7 @@ public class ManageBasketActivity extends AppCompatActivity {
                     String name = data.getStringExtra("basket");
                     baskets.remove(name);
                     basketDates.remove(name);
-                    updateBasketDataToServerAndListView();
+                    updateBasketDataToServer();
                 }catch(Exception e) {
 
                 }
@@ -402,7 +412,7 @@ public class ManageBasketActivity extends AppCompatActivity {
                     String basketName = data.getStringExtra("basket");
                     String stockSymbol = data.getStringExtra("stockSymbol");
                     baskets.get(basketName).remove(stockSymbol);
-                    updateBasketDataToServerAndListView();
+                    updateBasketDataToServer();
                 }catch (Exception e) {
 
                 }
@@ -410,11 +420,12 @@ public class ManageBasketActivity extends AppCompatActivity {
         }else if(requestCode == EDIT_STOCK_SHARES) {
             if(resultCode == RESULT_OK) {
                 try{
-                    String basketName = data.getStringExtra("basket");
+                    String basketName = data.getStringExtra("basketName");
                     String stockSymbol = data.getStringExtra("stockSymbol");
                     int numShares = data.getIntExtra("numShares", -1);
+                    Log.i("basket/symbol/share", basketName+"/"+stockSymbol+"/"+numShares);
                     baskets.get(basketName).put(stockSymbol, numShares);
-                    updateBasketDataToServerAndListView();
+                    updateBasketDataToServer();
                 }catch (Exception e) {
 
                 }
@@ -423,7 +434,29 @@ public class ManageBasketActivity extends AppCompatActivity {
         }
     }
 
-    private void updateBasketDataToServerAndListView() {
+    private void updateListView() {
+        basketNames.clear();
+        for(String key : baskets.keySet()) {
+            Log.i("on update:", key);
+            basketNames.add(key);
+        }
+        if(!baskets.containsKey(hoveredBasket)) hoveredBasket = "";
+        basketListViewAdapter.notifyDataSetChanged();
+
+        stockShareList.clear();
+
+        if(hoveredBasket.length() >0){
+            for(Map.Entry<String, Integer> entry : baskets.get(hoveredBasket).entrySet()) {
+                stockShareList.add(entry.getKey()+","+entry.getValue());
+            }
+
+        }
+        if(stockShareList.size() > 0) stockShareListViewAdapter.notifyDataSetChanged();
+    }
+
+
+
+    private void updateBasketDataToServer() {
         ParseUser user = ParseUser.getCurrentUser();
         user.put("baskets", new JSONObject(baskets).toString());
         user.put("basketDates", new JSONObject(basketDates).toString());
@@ -432,9 +465,7 @@ public class ManageBasketActivity extends AppCompatActivity {
             @Override
             public void done(ParseException e) {
                 if(e == null) {
-                    //FIXME
-                    basketListViewAdapter.notifyDataSetChanged();
-                    stockShareListViewAdapter.notifyDataSetChanged();
+                    updateListView();
 
                     Toast.makeText(getApplicationContext(), "Basket information saved.",Toast.LENGTH_SHORT);
 

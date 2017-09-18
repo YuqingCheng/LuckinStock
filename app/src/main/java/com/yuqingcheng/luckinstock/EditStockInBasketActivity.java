@@ -21,6 +21,8 @@ public class EditStockInBasketActivity extends AppCompatActivity {
 
     EditText numShares;
 
+    String basketNameStr;
+
     Button submit;
 
     StockAnalyzer analyzer;
@@ -38,7 +40,7 @@ public class EditStockInBasketActivity extends AppCompatActivity {
         Intent intent = getIntent();
 
         try{
-            String basketNameStr = intent.getStringExtra("basketName");
+            basketNameStr = intent.getStringExtra("basketName");
             basketName.setText(basketNameStr);
             String stockSymbolStr = intent.getStringExtra("stockSymbol");
             stockSymbol.setText(stockSymbolStr);
@@ -50,7 +52,7 @@ public class EditStockInBasketActivity extends AppCompatActivity {
     }
 
     public void submit(View view) {
-        String stockSymbolStr = stockSymbol.getText().toString();
+        String stockSymbolStr = stockSymbol.getText().toString().toUpperCase();
         String numSharesStr = numShares.getText().toString();
         GetStockName getStockNameTask = new GetStockName();
 
@@ -63,7 +65,7 @@ public class EditStockInBasketActivity extends AppCompatActivity {
 
                     if(numSharesInt > 0 && numSharesInt <= 1000) {
                         Intent intent = new Intent();
-                        intent.putExtra("basketName", basketName.getText().toString());
+                        intent.putExtra("basketName", basketNameStr);
                         intent.putExtra("stockSymbol", stockSymbolStr);
                         intent.putExtra("numShares", numSharesInt);
 
