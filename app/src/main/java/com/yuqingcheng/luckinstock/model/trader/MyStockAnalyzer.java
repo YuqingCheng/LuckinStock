@@ -37,7 +37,7 @@ public class MyStockAnalyzer implements StockAnalyzer {
 
   private Map<String, Integer> maUpdateMap;
 
-  private Strategy strategy;
+  private Map<String, Strategy> strategyMap;
 
   /**
    * a constructor to initialize the data field.
@@ -50,6 +50,7 @@ public class MyStockAnalyzer implements StockAnalyzer {
     this.yMap = new HashMap<>();
     this.curveUpdateMap = new HashMap<>();
     this.maUpdateMap = new HashMap<>();
+    this.strategyMap = new HashMap<>();
   }
 
 
@@ -240,6 +241,30 @@ public class MyStockAnalyzer implements StockAnalyzer {
     this.displayedItems.put(name, hp);
   }
 
+  private void addStrategySimulationToDisplayedItems(String simulationName) {
+
+    Map<Integer, Double> hp = historicalPricesUsingStrategy(simulationName);
+
+    if(curveUpdateMap.containsKey(simulationName)) {
+      curveUpdateMap.put(simulationName, curveUpdateMap.get(simulationName)+1);
+    }else{
+      curveUpdateMap.put(simulationName, 0);
+    }
+
+    List<Integer> xList = new ArrayList<>();
+    List<Double> yList = new ArrayList<>();
+
+    for(Map.Entry<Integer, Double> entry : hp.entrySet()) {
+      xList.add(entry.getKey());
+      yList.add(entry.getValue());
+    }
+
+    xMap.put(simulationName, xList);
+    yMap.put(simulationName, yList);
+
+    this.displayedItems.put(simulationName, hp);
+  }
+
   /**
    * get current displayed items as a Map.
    *
@@ -336,11 +361,12 @@ public class MyStockAnalyzer implements StockAnalyzer {
    * @param period     number of days as period of rebalancing.
    * @param endDate    ending date to determine total profit.
    */
-  public void generateAutoRebalanceStrategy(String basketName, double invest, int period,
+  public void generateAutoRebalanceStrategy(String simulationName, String basketName, double invest, int period,
                                             Object endDate) {
 
-    this.strategy = new AutoRebalanceStrategy(baskets.get(basketName),
-            basketSetDates.get(basketName), invest, period, endDate);
+    this.strategyMap.put(simulationName, new AutoRebalanceStrategy(baskets.get(basketName),
+            basketSetDates.get(basketName), invest, period, endDate));
+    addStrategySimulationToDisplayedItems(simulationName);
 
   }
 
@@ -349,8 +375,8 @@ public class MyStockAnalyzer implements StockAnalyzer {
    *
    * @return total profit made.
    */
-  public double simulatingProfit() {
-    return this.strategy.totalProfit();
+  public double simulatingProfit(String simulationName) {
+    return this.strategyMap.get(simulationName).totalProfit();
   }
 
   /**
@@ -358,8 +384,8 @@ public class MyStockAnalyzer implements StockAnalyzer {
    *
    * @return historical prices data of basket as a Map.
    */
-  public Map<Integer, Double> historicalPricesUsingStrategy() {
-    return this.strategy.basketHistoricalPrice();
+  public Map<Integer, Double> historicalPricesUsingStrategy(String simulationName) {
+    return this.strategyMap.get(simulationName).basketHistoricalPrice();
   }
 
   /**

@@ -50,11 +50,12 @@ public interface StockAnalyzer {
 
   String getStockName(String symbol) throws IllegalArgumentException;
 
-  void generateAutoRebalanceStrategy(String basketName, double invest, int period, Object endDate);
+  void generateAutoRebalanceStrategy(String simulationName, String basketName, double invest, int period,
+                                     Object endDate);
 
-  double simulatingProfit();
+  double simulatingProfit(String simulationName);
 
-  Map<Integer, Double> historicalPricesUsingStrategy();
+  Map<Integer, Double> historicalPricesUsingStrategy(String simulationName);
 
   Map<Integer, Double> getHistoricalPrices(String stockSymbol, Object fromDate, Object toDate);
 

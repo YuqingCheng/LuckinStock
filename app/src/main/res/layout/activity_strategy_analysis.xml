@@ -7,7 +7,7 @@
     tools:context="com.yuqingcheng.luckinstock.MainActivity">
 
     <com.androidplot.xy.XYPlot
-        android:id="@+id/plot"
+        android:id="@+id/strategyPlot"
         style="@style/APDefacto.Dark"
         android:layout_width="match_parent"
         android:layout_height="267dp"
@@ -19,24 +19,24 @@
         ap:lineLabelRotationBottom="-45"
         ap:lineLabels="left|bottom"
         ap:rangeTitle="range"
-        ap:title="Stock Price Analysis" />
+        ap:title="Strategy Simulation" />
 
     <ListView
-        android:id="@+id/listView"
+        android:id="@+id/strategyListView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/plot"
+        android:layout_below="@+id/strategyPlot"
         android:layout_column="0"
         android:layout_gravity="fill"
         android:layout_row="1"
         android:layout_rowSpan="3" />
 
     <ImageButton
-        android:id="@+id/imageButton"
+        android:id="@+id/addStrategy"
         android:layout_width="50dp"
         android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/plot"
-        android:layout_below="@+id/plot"
+        android:layout_alignRight="@+id/strategyPlot"
+        android:layout_below="@+id/strategyPlot"
         android:onClick="addStock"
         ap:srcCompat="@android:drawable/ic_menu_add" />
 

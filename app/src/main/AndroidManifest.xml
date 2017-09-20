@@ -28,7 +28,9 @@
         <activity android:name=".SignupLoginActivity" />
         <activity android:name=".Main2Activity" />
         <activity android:name=".EditBasketActivity" />
-        <activity android:name=".EditStockInBasketActivity"></activity>
+        <activity android:name=".EditStockInBasketActivity" />
+        <activity android:name=".StrategyAnalysisActivity" />
+        <activity android:name=".EditStrategyActivity"></activity>
     </application>
 
 </manifest>

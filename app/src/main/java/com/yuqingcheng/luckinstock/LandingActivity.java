@@ -35,7 +35,7 @@ public class LandingActivity extends AppCompatActivity {
     boolean isLogin;
     ImageButton avatar;
     TextView userName;
-    Button addBasket;
+    Button manageBasket;
     Button strategySimulation;
     ParseUser currentUser;
     String basketJSONStr;
