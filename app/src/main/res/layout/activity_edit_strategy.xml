@@ -36,10 +36,10 @@
         android:layout_height="wrap_content"
         android:text="Invest (in dollars):"
         android:textSize="18sp"
-        android:layout_marginTop="13dp"
+        android:layout_marginTop="50dp"
+        android:layout_marginStart="20dp"
         android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginStart="20dp" />
+        android:layout_alignParentStart="true" />
 
     <EditText
         android:id="@+id/investEditText"
@@ -112,6 +112,15 @@
         android:layout_marginStart="32dp"
         android:text="Choose a strategy"
         android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/editStrategyHeaderTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignStart="@+id/textView"
+        android:text="Customize Strategy"
+        android:textSize="24sp" />
 
 </RelativeLayout>
 
