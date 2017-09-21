@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -27,11 +28,13 @@ import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseUser;
 import com.parse.SaveCallback;
+import com.yuqingcheng.luckinstock.util.DateParser;
 
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -49,12 +52,16 @@ public class EditStrategyActivity extends AppCompatActivity {
     Button submitStrategy;
     ListView basketsListView;
     ListView strategyListView;
-    public Map<String, Map<String, Integer>> baskets;
+    EditText investEditText;
+    EditText periodEditText;
+    EditText endDateEditText;
+    Map<String, Map<String, Integer>> baskets;
     Map<String, Integer> basketDates;
     View hoveredBasket;
     View hoveredStrategy;
     String hoveredBasketName;
     String hoveredStrategyName;
+    String simulationName;
     List<String> basketNames;
     EditStrategyActivity.BasketListViewAdapter basketListViewAdapter;
     List<String> strategyList;
@@ -68,16 +75,34 @@ public class EditStrategyActivity extends AppCompatActivity {
         submitStrategy = (Button) findViewById(R.id.addStrategyButton);
         basketsListView = (ListView) findViewById(R.id.basketListInStrategyPage);
         strategyListView = (ListView) findViewById(R.id.strategyList);
+        investEditText = (EditText) findViewById(R.id.investEditText);
+        periodEditText = (EditText) findViewById(R.id.periodEditText);
+        endDateEditText = (EditText) findViewById(R.id.strategyEndDateEditText);
         baskets = new HashMap<>();
         basketDates = new HashMap<>();
         hoveredBasketName = "";
         hoveredStrategyName = "";
         basketNames = new ArrayList<>();
+        simulationName = "";
 
         try {
             Intent intent = getIntent();
-            JSONObject basketJSON = new JSONObject(intent.getStringExtra("baskets"));
-            JSONObject basketDateJSON = new JSONObject(intent.getStringExtra("basketDates"));
+            hoveredBasketName = intent.getStringExtra("basketName");
+            hoveredStrategyName = intent.getStringExtra("strategyName");
+            investEditText.setText(intent.getStringExtra("invest"));
+            periodEditText.setText(intent.getStringExtra("period"));
+            endDateEditText.setText(intent.getStringExtra("endDate"));
+            simulationName = intent.getStringExtra("simulationName");
+
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        ParseUser user = ParseUser.getCurrentUser();
+
+        try {
+            JSONObject basketJSON = new JSONObject(user.getString("baskets"));
+            JSONObject basketDateJSON = new JSONObject(user.getString("basketDates"));
             Iterator<String> ite = basketJSON.keys();
             while (ite.hasNext()) {
                 String key = ite.next();
@@ -238,6 +263,10 @@ public class EditStrategyActivity extends AppCompatActivity {
 
             delete.setVisibility(View.INVISIBLE);
 
+            if(hoveredBasketName.equals(names.get(position))) {
+                setHoveredBasketListItem(rowView);
+            }
+
             return rowView;
 
         }
@@ -303,19 +332,60 @@ public class EditStrategyActivity extends AppCompatActivity {
                 }
             });
 
+            if(hoveredStrategyName.equals(strategyNameStr)) {
+                setHoveredStrategyListItem(rowView);
+            }
+
             return rowView;
 
         }
     }
 
     public void submitStrategy(View view) {
-
         try {
-            double invest = Double.valueOf();
-        }catch()
-        Intent intent = new Intent(this, EditBasketActivity.class);
-        intent.putExtra("basketName", "");
-        startActivityForResult(intent, EDIT_BASKET_NAME_DATE);
+            double invest = Double.valueOf(investEditText.getText().toString());
+            try{
+                int period = Integer.valueOf(periodEditText.getText().toString());
+                try{
+                    String date = endDateEditText.getText().toString();
+                    int dateAsInteger = DateParser.parseDateToInteger(date);
+                    int currentDate = Integer.valueOf(new SimpleDateFormat("yyyyMMdd").format(new Date()));
+                    if(dateAsInteger > currentDate) {
+                        Toast.makeText(getApplicationContext(), "Please enter a past date", Toast.LENGTH_SHORT);
+                        return;
+                    }
+                    if(hoveredBasketName.length() > 0 && hoveredStrategyName.length() > 0) {
+                        Intent intent = new Intent();
+                        Map<String, String> map = new HashMap<>();
+                        map.put("invest", ""+invest);
+                        map.put("period", ""+period);
+                        map.put("endDate", ""+dateAsInteger);
+                        map.put("basketName", hoveredBasketName);
+                        map.put("strategyName", hoveredStrategyName);
+                        try {
+                            intent.putExtra("simulationJSON", new JSONObject(map).toString());
+                            if(simulationName.length() > 0) intent.putExtra("simulationName", simulationName);
+                            setResult(RESULT_OK, intent);
+                            finish();
+                        }catch(Exception e) {
+                            e.printStackTrace();
+                        }
+                    }else{
+                        Toast.makeText(getApplicationContext(),
+                                "Please select a basket and a strategy.", Toast.LENGTH_SHORT).show();
+                    }
+                }catch(Exception e) {
+                    Toast.makeText(getApplicationContext(),
+                            "Please make sure input date is in right format.", Toast.LENGTH_SHORT).show();
+                }
+            }catch(Exception e) {
+                Toast.makeText(getApplicationContext(),
+                        "Please make sure input period is in correct format.", Toast.LENGTH_SHORT).show();
+            }
+        }catch(Exception e) {
+            Toast.makeText(getApplicationContext(),
+                    "Please make sure input invest is in correct format.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     protected void setHoveredBasketListItem(View view) {

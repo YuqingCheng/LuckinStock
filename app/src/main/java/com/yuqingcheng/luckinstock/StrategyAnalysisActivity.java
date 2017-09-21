@@ -27,8 +27,11 @@ import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.SimpleXYSeries;
 import com.androidplot.xy.XYGraphWidget;
 import com.androidplot.xy.XYPlot;
+import com.parse.ParseUser;
 import com.yuqingcheng.luckinstock.model.trader.MyStockAnalyzer;
 import com.yuqingcheng.luckinstock.model.trader.StockAnalyzer;
+
+import org.json.JSONObject;
 
 import java.text.DateFormat;
 import java.text.FieldPosition;
@@ -39,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -47,40 +51,37 @@ import java.util.TreeSet;
 
 public class StrategyAnalysisActivity extends AppCompatActivity {
 
-    final static int UPDATE_STOCK_TO_DISPLAY = 0;
+    final static int EDIT_SIMULATION_PLOT = 0;
     final static int DELETE_CONFIRMATION = 1;
+    final static int ADD_SIMULATION_PLOT = 2;
     final static float MA_50_COLOR_RATIO = 0.75f;
     final static float MA_200_COLOR_RATIO = 0.6f;
-    final static String MA_50_CHECKED = "50_CHECKED";
-    final static  String MA_200_CHECKED = "200_CHECKED";
-    final static String MA_50_SERIES_POSTFIX ="-MA-50";
-    final static String MA_200_SERIES_POSTFIX = "-MA-200";
+
+    final static String SIMULATION_PREFIX = "Simulation";
+
+    final static String AUTO_REBALANCED_STRATEGY = "Auto-Rebalanced Strategy";
 
     Set<Integer> colors;
 
     StockAnalyzer analyzer;
 
-    List<String> listViewSymbols;
+    List<String> listViewSimulations;
 
-    Map<String, String> listViewNameMap;
-
-    Map<String, String> fromDateMap;
-
-    Map<String, String> toDateMap;
+    Map<String, String> listViewSimulationInfoMap;
 
     ListView listView;
+
+    Map<String, Map<String, Integer>> baskets;
+
+    Map<String, Integer> basketDates;
+
+    Map<String, String> simulationJSONMap;
 
     Map<String, List<Integer>> seriesXMap; // local stock date data of each plot.
 
     Map<String, List<Double>> seriesYMap; // local stock price data of each plot.
 
     Map<String, Integer> curveUpdateMap; // detect change in same curve.
-
-    Map<String, List<Integer>> maXMap;
-
-    Map<String, List<Double>> maYMap;
-
-    Map<String, Integer> maUpdateMap; // detect change in same ma curve.
 
     XYPlot plot;
 
@@ -96,6 +97,8 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
     ArrayAdapter<String> listViewAdapter;
 
+    int simulationIndex;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -103,27 +106,17 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
         analyzer = new MyStockAnalyzer();
 
-        listViewSymbols = new LinkedList<>();
+        listViewSimulations = new LinkedList<>();
 
-        listViewNameMap = new HashMap<>();
+        listViewSimulationInfoMap = new HashMap<>();
 
         curveUpdateMap = new HashMap<>();
-
-        fromDateMap = new HashMap<>();
-
-        toDateMap = new HashMap<>();
 
         plot = (XYPlot) findViewById(R.id.strategyPlot);
 
         seriesXMap = new HashMap<>();
 
         seriesYMap = new HashMap<>();
-
-        maXMap = new HashMap<>();
-
-        maYMap = new HashMap<>();
-
-        maUpdateMap = new HashMap<>();
 
         formatterMap = new HashMap<>();
 
@@ -135,6 +128,10 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
         dateParseMap = new HashMap<>();
 
+        simulationIndex = 0;
+
+        simulationJSONMap = new HashMap<>();
+
         colors = new HashSet<Integer>(Arrays.asList(new Integer[]{ Color.rgb(252, 40, 252),
                 Color.rgb(103, 113, 245), Color.rgb(149, 216, 245), Color.rgb(239, 223, 80),
                 Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(235, 70, 70), Color.rgb(88, 239, 93)}));
@@ -143,7 +140,47 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
         plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).setFormat(new StrategyAnalysisActivity.XLabelFormat());
 
-        listViewAdapter = new StrategyAnalysisActivity.ListViewAdapter(this, listViewSymbols);
+        ParseUser user = ParseUser.getCurrentUser();
+
+        baskets = new HashMap<>();
+
+        basketDates = new HashMap<>();
+
+        try {
+            JSONObject basketJSON = new JSONObject(user.getString("baskets"));
+            JSONObject basketDateJSON = new JSONObject(user.getString("basketDates"));
+            Iterator<String> ite = basketJSON.keys();
+            while (ite.hasNext()) {
+                String key = ite.next();
+                try {
+                    JSONObject valJSON = basketJSON.getJSONObject(key);
+                    Map<String, Integer> valMap = new HashMap<>();
+                    Iterator<String> valIte = valJSON.keys();
+
+                    while (valIte.hasNext()) {
+                        String valKey = valIte.next();
+                        valMap.put(valKey, valJSON.getInt(valKey));
+                    }
+                    baskets.put(key, valMap);
+                } catch (org.json.JSONException e) {
+                    continue;
+                }
+            }
+            ite = basketDateJSON.keys();
+            while (ite.hasNext()) {
+                String key = ite.next();
+                basketDates.put(key, basketDateJSON.getInt(key));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        for(String basketName : baskets.keySet()) {
+            analyzer.addNewBasket(basketName, basketDates.get(basketName));
+            analyzer.addStockOrSharesToBasket(basketName, baskets.get(basketName));
+        }
+
+        listViewAdapter = new StrategyAnalysisActivity.ListViewAdapter(this, listViewSimulations);
 
         listView.setAdapter(listViewAdapter);
     }
@@ -206,25 +243,18 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
             int plotColor = colorMap.get(symbols.get(position));
             color.setImageDrawable(new ColorDrawable(plotColor));
-            name.setText(listViewNameMap.get(symbols.get(position)));
+            name.setText(listViewSimulationInfoMap.get(symbols.get(position)));
 
             edit.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(getApplicationContext(), AddStockActivity.class);
+                    Intent intent = new Intent(getApplicationContext(), EditStrategyActivity.class);
                     intent.putExtra("symbol", symbols.get(position));
                     intent.putExtra("fromDate", fromDateMap.get(symbols.get(position)));
                     intent.putExtra("toDate", toDateMap.get(symbols.get(position)));
-                    String movingAverage = "";
-                    if(maXMap.containsKey(symbols.get(position)+MA_50_SERIES_POSTFIX)){
-                        movingAverage += MA_50_CHECKED;
-                    }
-                    if(maXMap.containsKey(symbols.get(position)+MA_200_SERIES_POSTFIX)){
-                        movingAverage += MA_200_CHECKED;
-                    }
-                    intent.putExtra("movingAverage", movingAverage);
 
-                    startActivityForResult(intent, UPDATE_STOCK_TO_DISPLAY);
+
+                    startActivityForResult(intent, EDIT_SIMULATION_PLOT);
 
                 }
             });
@@ -439,84 +469,89 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        if (requestCode == UPDATE_STOCK_TO_DISPLAY) {
+        if (requestCode == EDIT_SIMULATION_PLOT) {
 
             if(resultCode == Activity.RESULT_OK){
 
-                String symbol = data.getStringExtra("symbol");
-                String fromDate = data.getStringExtra("fromDate");
-                String toDate = data.getStringExtra("toDate");
-                String name = data.getStringExtra("name");
-                String movingAverage = data.getStringExtra("movingAverage");
+                String simulationJSON = data.getStringExtra("simulationJSON");
 
-                fromDateMap.put(symbol, fromDate);
+                String simulationName = data.getStringExtra("simulationName");
 
-                toDateMap.put(symbol, toDate);
+                simulationJSONMap.put(simulationName, simulationJSON);
 
-                boolean listViewUpdated = true;
+                try {
 
-                for(String each : this.listViewSymbols) {
-                    if(each.equals(symbol)) {
-                        listViewUpdated = false;
-                        break;
-                    }
-                }
+                    JSONObject jsonObject = new JSONObject(simulationJSON);
 
-                if(listViewUpdated){
-                    if(colors.isEmpty()){
-                        Toast toast = Toast.makeText(this, "Please delete some plots before adding new plot.", Toast.LENGTH_LONG);
-                        toast.show();
-                        return;
-                    }
-                    listViewSymbols.add(symbol);
-                    listViewNameMap.put(symbol, name);
-                    int color = colors.iterator().next();
-                    LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
+                    StringBuffer simulationInfo = new StringBuffer();
 
-                    colors.remove(color);
-                    colorMap.put(symbol, color);
-                    formatterMap.put(symbol, formatter);
+                    if(jsonObject.getString("basketName") != null) simulationInfo.append(jsonObject.getString("basketName"));
+
+                    if(jsonObject.getString("strategyName") != null) simulationInfo.append("-"+jsonObject.getString("strategyName"));
+
+                    if(jsonObject.getString("invest")!= null) simulationInfo.append("-"+jsonObject.getString("invest"));
+
+                    listViewSimulationInfoMap.put(simulationName, simulationInfo.toString());
+
                     listViewAdapter.notifyDataSetChanged();
-                }
 
-                MainActivity.AddDisplayedItemsTask addDisplayedItemsTask = new MainActivity.AddDisplayedItemsTask();
+                    executeStrategy(simulationName, simulationJSON);
 
-                try{
-                    if(addDisplayedItemsTask.execute(symbol, fromDate, toDate).get()) {
-
-                        MainActivity.AddMovingAverageTask addMovingAverageTask1 = new MainActivity.AddMovingAverageTask();
-                        MainActivity.AddMovingAverageTask addMovingAverageTask2 = new MainActivity.AddMovingAverageTask();
-
-                        if(movingAverage.equals(MA_50_CHECKED+MA_200_CHECKED)) {
-
-                            if(addMovingAverageTask1.execute(symbol, "50").get()) {
-                                if(addMovingAverageTask2.execute(symbol, "200").get()) refreshPlot();
-                            }// two tasks run one after another to avoid concurrency of editing maps in analyzer.
-
-                        } else if(movingAverage.equals(MA_50_CHECKED)){
-                            this.analyzer.removeMovingAverage(symbol, 200);
-                            if(addMovingAverageTask1.execute(symbol, "50").get()) refreshPlot();
-                        }else if(movingAverage.equals(MA_200_CHECKED)){
-                            this.analyzer.removeMovingAverage(symbol, 50);
-                            if(addMovingAverageTask1.execute(symbol, "200").get()) refreshPlot();
-                        }else{
-                            this.analyzer.removeMovingAverage(symbol, 50);
-                            this.analyzer.removeMovingAverage(symbol, 200);
-                            refreshPlot();
-                        }
-
-
-                    }
-                } catch(Exception e) {
+                }catch (Exception e) {
                     e.printStackTrace();
-                    Toast toast = Toast.makeText(getApplicationContext(), "Failed to add plot.", Toast.LENGTH_LONG);
-                    toast.show();
                 }
             }
             if (resultCode == Activity.RESULT_CANCELED) {
                 //Write your code if there's no result
 
             }
+        } else if(requestCode == ADD_SIMULATION_PLOT) {
+            if(resultCode == Activity.RESULT_OK){
+
+                if (colors.isEmpty()) {
+                    Toast toast = Toast.makeText(this, "Please delete some plots before adding new plot.", Toast.LENGTH_SHORT);
+                    toast.show();
+                    return;
+                }
+
+                String simulationName = SIMULATION_PREFIX+(simulationIndex++);
+
+                String simulationJSON = data.getStringExtra("simulationJSON");
+
+                simulationJSONMap.put(simulationName, simulationJSON);
+
+                try {
+
+                    JSONObject jsonObject = new JSONObject(simulationJSON);
+
+                    StringBuffer simulationInfo = new StringBuffer();
+
+                    if(jsonObject.getString("basketName") != null) simulationInfo.append(jsonObject.getString("basketName"));
+
+                    if(jsonObject.getString("strategyName") != null) simulationInfo.append("-"+jsonObject.getString("strategyName"));
+
+                    if(jsonObject.getString("invest")!= null) simulationInfo.append("-"+jsonObject.getString("invest"));
+
+                    listViewSimulations.add(simulationName);
+                    listViewSimulationInfoMap.put(simulationName, simulationInfo.toString());
+                    int color = colors.iterator().next();
+                    LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
+                    colors.remove(color);
+                    colorMap.put(simulationName, color);
+                    formatterMap.put(simulationName, formatter);
+                    listViewAdapter.notifyDataSetChanged();
+
+                    executeStrategy(simulationName, simulationJSON);
+
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (resultCode == Activity.RESULT_CANCELED) {
+                //Write your code if there's no result
+
+            }
+
         } else if(requestCode == DELETE_CONFIRMATION) {
             if(resultCode == Activity.RESULT_OK) {
                 String symbol = data.getStringExtra("symbol");
@@ -540,11 +575,30 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
         }
     }//onActivityResult
 
+    private void executeStrategy(String simulationName, String simulationJSON) {
+            try {
+                JSONObject jsonObject = new JSONObject(simulationJSON);
+                if(jsonObject.getString("strategyName").equals(AUTO_REBALANCED_STRATEGY)) {
+                    AddAutoBalancedStrategySimulationTask task = new AddAutoBalancedStrategySimulationTask();
+                    if (task.execute(simulationName,
+                            jsonObject.getString("basketName"),
+                            jsonObject.getString("invest"),
+                            jsonObject.getString("period"),
+                            jsonObject.getString("endDate")).get())
+                        Toast.makeText(getApplicationContext(), "simulation done.", Toast.LENGTH_SHORT);
+                    else
+                        Toast.makeText(getApplicationContext(), "simulation failed.", Toast.LENGTH_SHORT);
+                }
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+    }
+
     /**
      * Async task to add items to analyzer, related with retrieving data from the web.
      */
 
-    public class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
+    private class AddAutoBalancedStrategySimulationTask extends AsyncTask<String, Void, Boolean> {
 
         String[] strs;
 
@@ -554,8 +608,13 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             this.strs = strs;
 
             try{
+                String simulationName = strs[0];
+                String basketName = strs[1];
+                double invest = Double.valueOf(strs[2]);
+                int period = Integer.valueOf(strs[3]);
+                String endDate = strs[4];
 
-                analyzer.addStockOrBasketHistoricalDataToDisplayedItems(strs[0], strs[1], strs[2]);
+                analyzer.generateAutoRebalanceStrategy(simulationName, basketName, invest, period, endDate);
 
             } catch(Exception e) {
                 e.printStackTrace();
@@ -565,23 +624,5 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             return true;
         }
 
-    }
-
-    public class AddMovingAverageTask extends AsyncTask<String, Void, Boolean> {
-
-        @Override
-        protected Boolean doInBackground(String... strs) {
-            String symbol = strs[0];
-            int days= Integer.valueOf(strs[1]);
-            try{
-
-                analyzer.addMovingAverageForExistingDisplayedItems(symbol, days);
-
-            }catch(Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-            return true;
-        }
     }
 }

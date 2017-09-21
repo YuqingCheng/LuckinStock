@@ -241,7 +241,7 @@ public class MyStockAnalyzer implements StockAnalyzer {
     this.displayedItems.put(name, hp);
   }
 
-  private void addStrategySimulationToDisplayedItems(String simulationName) {
+  public void addStrategySimulationToDisplayedItems(String simulationName) {
 
     Map<Integer, Double> hp = historicalPricesUsingStrategy(simulationName);
 
@@ -366,8 +366,8 @@ public class MyStockAnalyzer implements StockAnalyzer {
 
     this.strategyMap.put(simulationName, new AutoRebalanceStrategy(baskets.get(basketName),
             basketSetDates.get(basketName), invest, period, endDate));
-    addStrategySimulationToDisplayedItems(simulationName);
 
+    addStrategySimulationToDisplayedItems(simulationName);
   }
 
   /**

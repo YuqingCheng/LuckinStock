@@ -552,7 +552,7 @@ public class MainActivity extends AppCompatActivity {
      * Async task to add items to analyzer, related with retrieving data from the web.
      */
 
-    public class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
+    private class AddDisplayedItemsTask extends AsyncTask<String, Void, Boolean> {
 
         String[] strs;
 
@@ -575,7 +575,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public class AddMovingAverageTask extends AsyncTask<String, Void, Boolean> {
+    private class AddMovingAverageTask extends AsyncTask<String, Void, Boolean> {
 
         @Override
         protected Boolean doInBackground(String... strs) {
