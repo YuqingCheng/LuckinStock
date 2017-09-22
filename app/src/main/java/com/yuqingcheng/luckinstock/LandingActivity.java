@@ -122,6 +122,15 @@ public class LandingActivity extends AppCompatActivity {
         }
     }
 
+    public void strategySimulation(View view) {
+        if(isLogin) {
+            Intent intent = new Intent(this, StrategyAnalysisActivity.class);
+            startActivity(intent);
+        }else{
+            Toast.makeText(this, "Please log in to continue.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void manageBaskets(View view) {
 
         if(isLogin) {

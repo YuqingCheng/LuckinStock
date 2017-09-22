@@ -13,6 +13,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,8 +55,6 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
     final static int EDIT_SIMULATION_PLOT = 0;
     final static int DELETE_CONFIRMATION = 1;
     final static int ADD_SIMULATION_PLOT = 2;
-    final static float MA_50_COLOR_RATIO = 0.75f;
-    final static float MA_200_COLOR_RATIO = 0.6f;
 
     final static String SIMULATION_PREFIX = "Simulation";
 
@@ -136,7 +135,7 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                 Color.rgb(103, 113, 245), Color.rgb(149, 216, 245), Color.rgb(239, 223, 80),
                 Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(235, 70, 70), Color.rgb(88, 239, 93)}));
 
-        listView = (ListView) findViewById(R.id.listView);
+        listView = (ListView) findViewById(R.id.strategyListView);
 
         plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).setFormat(new StrategyAnalysisActivity.XLabelFormat());
 
@@ -146,43 +145,19 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
         basketDates = new HashMap<>();
 
-        try {
-            JSONObject basketJSON = new JSONObject(user.getString("baskets"));
-            JSONObject basketDateJSON = new JSONObject(user.getString("basketDates"));
-            Iterator<String> ite = basketJSON.keys();
-            while (ite.hasNext()) {
-                String key = ite.next();
-                try {
-                    JSONObject valJSON = basketJSON.getJSONObject(key);
-                    Map<String, Integer> valMap = new HashMap<>();
-                    Iterator<String> valIte = valJSON.keys();
+        SynchonizeBasketTask synchonizeBasketTask = new SynchonizeBasketTask();
 
-                    while (valIte.hasNext()) {
-                        String valKey = valIte.next();
-                        valMap.put(valKey, valJSON.getInt(valKey));
-                    }
-                    baskets.put(key, valMap);
-                } catch (org.json.JSONException e) {
-                    continue;
-                }
+        try {
+
+            if(synchonizeBasketTask.execute(user.getString("baskets"), user.getString("basketDates")).get()){
+                listViewAdapter = new StrategyAnalysisActivity.ListViewAdapter(this, listViewSimulations);
+                listView.setAdapter(listViewAdapter);
             }
-            ite = basketDateJSON.keys();
-            while (ite.hasNext()) {
-                String key = ite.next();
-                basketDates.put(key, basketDateJSON.getInt(key));
-            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        for(String basketName : baskets.keySet()) {
-            analyzer.addNewBasket(basketName, basketDates.get(basketName));
-            analyzer.addStockOrSharesToBasket(basketName, baskets.get(basketName));
-        }
-
-        listViewAdapter = new StrategyAnalysisActivity.ListViewAdapter(this, listViewSimulations);
-
-        listView.setAdapter(listViewAdapter);
     }
 
 
@@ -249,13 +224,24 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View view) {
                     Intent intent = new Intent(getApplicationContext(), EditStrategyActivity.class);
-                    intent.putExtra("symbol", symbols.get(position));
-                    intent.putExtra("fromDate", fromDateMap.get(symbols.get(position)));
-                    intent.putExtra("toDate", toDateMap.get(symbols.get(position)));
 
+                    try {
 
-                    startActivityForResult(intent, EDIT_SIMULATION_PLOT);
+                        JSONObject jsonObject = new JSONObject(simulationJSONMap.get(symbols.get(position)));
 
+                        intent.putExtra("simulationName", symbols.get(position));
+
+                        Iterator<String> ite = jsonObject.keys();
+
+                        while(ite.hasNext()) {
+                            String key = ite.next();
+                            intent.putExtra(key, jsonObject.getString(key));
+                        }
+
+                        startActivityForResult(intent, EDIT_SIMULATION_PLOT);
+                    }catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             });
 
@@ -264,7 +250,7 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     DialogFragment dialog = new MainActivity.DeleteConfirmationDialog();
                     Bundle args = new Bundle();
-                    args.putString(StrategyAnalysisActivity.DeleteConfirmationDialog.STOCK_SYMBOL, symbols.get(position));
+                    args.putString(DeleteConfirmationDialog.SIMULATION_SYMBOL, symbols.get(position));
 
                     dialog.setArguments(args);
                     dialog.setTargetFragment(dialog, DELETE_CONFIRMATION); //FIXME
@@ -279,16 +265,16 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
     public static class DeleteConfirmationDialog extends DialogFragment {
 
-        public static final String STOCK_SYMBOL = "DeleteConfirmationDialog.Symbol";
+        public static final String SIMULATION_SYMBOL = "DeleteConfirmationDialog.Symbol";
         String symbol;
 
-        MainActivity mainActivity;
+        StrategyAnalysisActivity strategyAnalysisActivity;
 
         @Override
         public void onAttach(Activity activity) {
             super.onAttach(activity);
             try{
-                mainActivity = (MainActivity) activity;
+                strategyAnalysisActivity = (StrategyAnalysisActivity) activity;
             }catch (ClassCastException e){
                 e.printStackTrace();
             }
@@ -297,9 +283,8 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             Bundle args = getArguments();
-            symbol = args.getString(STOCK_SYMBOL);
-            String message = "Are you sure to delete the plot for " + symbol
-                    + "? Its moving average plot will be deleted as well.";
+            symbol = args.getString(SIMULATION_SYMBOL);
+            String message = "Are you sure to delete the plot for " + symbol + "?";
 
             return new AlertDialog.Builder(getActivity())
                     .setTitle("Confirm To Delete")
@@ -308,8 +293,8 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
                             Intent intent = new Intent();
-                            intent.putExtra("symbol", symbol);
-                            mainActivity.onActivityResult(getTargetRequestCode(), Activity.RESULT_OK, intent);
+                            intent.putExtra("simulationName", symbol);
+                            strategyAnalysisActivity.onActivityResult(getTargetRequestCode(), Activity.RESULT_OK, intent);
                         }
                     })
                     .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener()
@@ -340,9 +325,9 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             return;
         }
 
-        Intent intent = new Intent(this, AddStockActivity.class);
+        Intent intent = new Intent(this, EditStrategyActivity.class);
 
-        startActivityForResult(intent, UPDATE_STOCK_TO_DISPLAY);
+        startActivityForResult(intent, ADD_SIMULATION_PLOT);
 
     }
 
@@ -352,7 +337,6 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
      */
     private void refreshPlot() {
         Map<String, Integer> newCurveUpdateMap = analyzer.getCurveUpdateMap();
-        Map<String, Integer> newMaUpdateMap = analyzer.getMaUpdateMap();
         Map<String, List<Integer>> newXMap = analyzer.getXMap();
         Map<String, List<Double>> newYMap = analyzer.getYMap();
         boolean changed = false;
@@ -378,29 +362,6 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                 curveUpdateMap.put(name, newCurveUpdateMap.get(name));
                 seriesXMap.put(name, newXMap.get(name));
                 seriesYMap.put(name, newYMap.get(name));
-            }
-        }
-
-        //check removed ma plots.
-        Set<String> currMaNames = new HashSet(maUpdateMap.keySet());
-        for(String name : currMaNames) {
-            if(!newMaUpdateMap.containsKey(name)) {
-                changed = true;
-                maUpdateMap.remove(name);
-                maXMap.remove(name);
-                maYMap.remove(name);
-            }
-        }
-
-        //check added moving average, note that newCurveUpdateMap doesn't have ma information,
-        // but newXMap has.
-        for(String name : newMaUpdateMap.keySet()) {
-            if(!maUpdateMap.containsKey(name)
-                    || maUpdateMap.get(name) != newMaUpdateMap.get(name)) {
-                changed = true;
-                maUpdateMap.put(name, newMaUpdateMap.get(name));
-                maXMap.put(name, newXMap.get(name));
-                maYMap.put(name, newYMap.get(name));
             }
         }
 
@@ -441,22 +402,6 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             plot.addSeries(new SimpleXYSeries(tempList, this.seriesYMap.get(name), name), this.formatterMap.get(name));
         }
 
-        for(String maName : this.maUpdateMap.keySet()) {
-            List<Integer> tempList = new ArrayList<>();
-            for(Integer date : this.maXMap.get(maName)) {
-                tempList.add(this.dateValueMap.get(date));
-            }
-            String[] strs = maName.split("-");
-            int plotColor = colorMap.get(strs[0]);
-            float ratio = strs[2].equals("50") ? MA_50_COLOR_RATIO : MA_200_COLOR_RATIO;
-            int color = Color.rgb(Math.round(Color.red(plotColor) * ratio),
-                    Math.round(Color.green(plotColor) * ratio),
-                    Math.round(Color.blue(plotColor) * ratio));
-            LineAndPointFormatter formatter = new LineAndPointFormatter(Color.TRANSPARENT, color, Color.TRANSPARENT, null);
-            plot.addSeries(new SimpleXYSeries(tempList, this.maYMap.get(maName), maName), formatter);
-        }
-
-
         plot.redraw();
     }
 
@@ -496,6 +441,8 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
                     listViewAdapter.notifyDataSetChanged();
 
                     executeStrategy(simulationName, simulationJSON);
+
+                    refreshPlot();
 
                 }catch (Exception e) {
                     e.printStackTrace();
@@ -543,6 +490,8 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
                     executeStrategy(simulationName, simulationJSON);
 
+                    refreshPlot();
+
                 }catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -554,17 +503,13 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
 
         } else if(requestCode == DELETE_CONFIRMATION) {
             if(resultCode == Activity.RESULT_OK) {
-                String symbol = data.getStringExtra("symbol");
-                this.analyzer.removeDisplayedItem(symbol);
-                this.analyzer.removeMovingAverage(symbol, 50);
-                this.analyzer.removeMovingAverage(symbol, 200);
-                this.listViewSymbols.remove(symbol);
-                this.listViewNameMap.remove(symbol);
-                this.fromDateMap.remove(symbol);
-                this.toDateMap.remove(symbol);
-                colors.add(colorMap.get(symbol));
-                colorMap.remove(symbol);
-                formatterMap.remove(symbol);
+                String simulationName = data.getStringExtra("simulationName");
+                this.analyzer.removeDisplayedItem(simulationName);
+                this.listViewSimulations.remove(simulationName);
+                this.listViewSimulationInfoMap.remove(simulationName);
+                colors.add(colorMap.get(simulationName));
+                colorMap.remove(simulationName);
+                formatterMap.remove(simulationName);
                 this.listViewAdapter.notifyDataSetChanged();
                 refreshPlot();
             }
@@ -592,6 +537,48 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             }catch (Exception e) {
                 e.printStackTrace();
             }
+    }
+
+    private class SynchonizeBasketTask extends AsyncTask<String, Void, Boolean> {
+
+        @Override
+        protected Boolean doInBackground(String... strs) {
+            try {
+                JSONObject basketJSON = new JSONObject(strs[0]);
+                JSONObject basketDateJSON = new JSONObject(strs[1]);
+                Iterator<String> ite = basketJSON.keys();
+                while (ite.hasNext()) {
+                    String key = ite.next();
+                    try {
+                        JSONObject valJSON = basketJSON.getJSONObject(key);
+                        Map<String, Integer> valMap = new HashMap<>();
+                        Iterator<String> valIte = valJSON.keys();
+
+                        while (valIte.hasNext()) {
+                            String valKey = valIte.next();
+                            valMap.put(valKey, valJSON.getInt(valKey));
+                        }
+                        baskets.put(key, valMap);
+                    } catch (org.json.JSONException e) {
+                        continue;
+                    }
+                }
+                ite = basketDateJSON.keys();
+                while (ite.hasNext()) {
+                    String key = ite.next();
+                    basketDates.put(key, basketDateJSON.getInt(key));
+                }
+
+                for(String basketName : baskets.keySet()) {
+                    analyzer.addNewBasket(basketName, basketDates.get(basketName));
+                    analyzer.addStockOrSharesToBasket(basketName, baskets.get(basketName));
+                }
+                return true;
+            }catch(Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
     }
 
     /**

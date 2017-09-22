@@ -37,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_alignRight="@+id/strategyPlot"
         android:layout_below="@+id/strategyPlot"
-        android:onClick="addStock"
+        android:onClick="addStrategySimulation"
         ap:srcCompat="@android:drawable/ic_menu_add" />
 
 </RelativeLayout>

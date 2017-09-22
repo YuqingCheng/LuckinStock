@@ -59,6 +59,7 @@ public class WebStockDataRetriever implements StockDataRetriever {
       output = output.substring(1, output.length()-1);
       System.out.println(output);
     }catch(Exception e) {
+      e.printStackTrace();
       throw new IllegalArgumentException("Invalid url format or scanner reading error.");
     }
 

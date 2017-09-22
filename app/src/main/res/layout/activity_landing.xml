@@ -41,9 +41,10 @@
         android:id="@+id/button4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Strategy Simulation"
         android:layout_below="@+id/button3"
-        android:layout_centerHorizontal="true" />
+        android:layout_centerHorizontal="true"
+        android:onClick="strategySimulation"
+        android:text="Strategy Simulation" />
 
     <TextView
         android:id="@+id/userName"

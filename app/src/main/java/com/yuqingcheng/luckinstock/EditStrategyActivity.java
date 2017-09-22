@@ -11,6 +11,7 @@ import android.os.AsyncTask;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,9 +38,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static java.lang.Thread.sleep;
 
 public class EditStrategyActivity extends AppCompatActivity {
 
@@ -67,6 +72,8 @@ public class EditStrategyActivity extends AppCompatActivity {
     List<String> strategyList;
     EditStrategyActivity.StrategyListViewAdapter strategyListViewAdapter;
 
+    final Vector<String> strategyVector = new Vector<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,19 +87,16 @@ public class EditStrategyActivity extends AppCompatActivity {
         endDateEditText = (EditText) findViewById(R.id.strategyEndDateEditText);
         baskets = new HashMap<>();
         basketDates = new HashMap<>();
-        hoveredBasketName = "";
-        hoveredStrategyName = "";
-        basketNames = new ArrayList<>();
-        simulationName = "";
 
         try {
             Intent intent = getIntent();
-            hoveredBasketName = intent.getStringExtra("basketName");
-            hoveredStrategyName = intent.getStringExtra("strategyName");
-            investEditText.setText(intent.getStringExtra("invest"));
-            periodEditText.setText(intent.getStringExtra("period"));
-            endDateEditText.setText(intent.getStringExtra("endDate"));
-            simulationName = intent.getStringExtra("simulationName");
+
+            hoveredBasketName = intent.getStringExtra("basketName") == null ? "" : intent.getStringExtra("basketName");
+            hoveredStrategyName = intent.getStringExtra("strategyName") == null ? "" : intent.getStringExtra("strategyName");
+            investEditText.setText(intent.getStringExtra("invest") == null? "" : intent.getStringExtra("invest"));
+            periodEditText.setText(intent.getStringExtra("period") == null ? "" : intent.getStringExtra("period"));
+            endDateEditText.setText(intent.getStringExtra("endDate") == null ? "" : intent.getStringExtra("endDate"));
+            simulationName = intent.getStringExtra("simulationName") == null ? "" : intent.getStringExtra("simulationName");
 
         }catch (Exception e) {
             e.printStackTrace();
@@ -129,66 +133,77 @@ public class EditStrategyActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
+        basketNames = new ArrayList(baskets.keySet());
+
         basketListViewAdapter = new EditStrategyActivity.BasketListViewAdapter(this, basketNames);
 
         basketsListView.setAdapter(basketListViewAdapter);
 
+        basketListViewAdapter.notifyDataSetChanged();
+
         String uid = ParseUser.getCurrentUser().getString("userId");
 
-        strategyList = new ArrayList<>();
-
         try {
-            strategyList = new ArrayList(new GetUserStrategyTask().execute(uid).get());
+            strategyList = new ArrayList<>();
+
+            List<ParseObject> strategyPermits = new GetUserStrategyListTask().execute(uid).get();
+
+            for(ParseObject permit : strategyPermits) {
+                strategyList.add(new GetUserStrategyTask().execute(permit.getString("strategyId")).get());
+            }
+
+            strategyListViewAdapter = new StrategyListViewAdapter(this, strategyList);
+
+            strategyListView.setAdapter(strategyListViewAdapter);
+
+            strategyListViewAdapter.notifyDataSetChanged();
+
         } catch (Exception e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT);
         }
-
-        strategyListViewAdapter = new StrategyListViewAdapter(this, strategyList);
-
-        strategyListView.setAdapter(strategyListViewAdapter);
-
-        basketListViewAdapter.notifyDataSetChanged();
-
-        strategyListViewAdapter.notifyDataSetChanged();
     }
 
-    private class GetUserStrategyTask extends AsyncTask<String, Void, Vector<String>> {
+    private class GetUserStrategyListTask extends AsyncTask<String, Void, List<ParseObject>> {
 
         @Override
-        protected Vector<String> doInBackground(String... strings) {
+        protected List<ParseObject> doInBackground(String... strings) {
+
             String uid = strings[0];
 
             ParseQuery<ParseObject> query = ParseQuery.getQuery("StrategyPermit");
 
-            query.whereEqualTo("userId", uid);
+            query.whereEqualTo("userId", uid); // using vector to ensure thread-safety
 
-            final Vector<String> strategyNameList = new Vector<>(); // using vector to ensure thread-safety
+            try {
 
-            query.findInBackground(new FindCallback<ParseObject>() {
-                @Override
-                public void done(List<ParseObject> objects, ParseException e) {
-                    if (e == null) {
-                        for (ParseObject each : objects) {
-                            ParseQuery<ParseObject> subQuery = ParseQuery.getQuery("Strategy");
-                            subQuery.whereEqualTo("strategyId", each.getString("strategyId"));
-                            subQuery.setLimit(1);
-                            subQuery.findInBackground(new FindCallback<ParseObject>() {
-                                @Override
-                                public void done(List<ParseObject> objects, ParseException e) {
-                                    if (e == null)
-                                        strategyNameList.add(objects.get(0).getString("name")+REGREX
-                                                +objects.get(0).getString("strategyDescription"));
-                                    else e.printStackTrace();
-                                }
-                            });
-                        }
-                    } else {
-                        e.printStackTrace();
-                    }
+                List<ParseObject> res = query.find();
+                for(ParseObject object : res) {
+                    object.fetchIfNeeded();
                 }
-            });
+                return res;
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
 
-            return strategyNameList;
+            return null;
+        }
+    }
+
+    private class GetUserStrategyTask extends AsyncTask<String, Void, String> {
+
+        @Override
+        protected String doInBackground(String... strs) {
+            ParseQuery<ParseObject> subQuery = ParseQuery.getQuery("Strategy");
+            subQuery.whereEqualTo("strategyId", strs[0]);
+            subQuery.setLimit(1);
+            try{
+                ParseObject res = subQuery.find().get(0).fetchIfNeeded();
+                Log.i("name####description", res.getString("name")+REGREX+res.getString("strategyDescription"));
+                return res.getString("name")+REGREX+res.getString("strategyDescription");
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
         }
     }
 
@@ -375,6 +390,7 @@ public class EditStrategyActivity extends AppCompatActivity {
                                 "Please select a basket and a strategy.", Toast.LENGTH_SHORT).show();
                     }
                 }catch(Exception e) {
+                    e.printStackTrace();
                     Toast.makeText(getApplicationContext(),
                             "Please make sure input date is in right format.", Toast.LENGTH_SHORT).show();
                 }
