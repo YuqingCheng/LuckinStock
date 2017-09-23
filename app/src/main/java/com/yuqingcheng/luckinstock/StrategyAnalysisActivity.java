@@ -248,7 +248,7 @@ public class StrategyAnalysisActivity extends AppCompatActivity {
             delete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    DialogFragment dialog = new MainActivity.DeleteConfirmationDialog();
+                    DialogFragment dialog = new StrategyAnalysisActivity.DeleteConfirmationDialog();
                     Bundle args = new Bundle();
                     args.putString(DeleteConfirmationDialog.SIMULATION_SYMBOL, symbols.get(position));
 

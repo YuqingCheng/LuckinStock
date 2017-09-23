@@ -7,7 +7,9 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -71,6 +73,7 @@ public class EditStrategyActivity extends AppCompatActivity {
     EditStrategyActivity.BasketListViewAdapter basketListViewAdapter;
     List<String> strategyList;
     EditStrategyActivity.StrategyListViewAdapter strategyListViewAdapter;
+    Map<String, View> basketViewMap;
 
     final Vector<String> strategyVector = new Vector<>();
 
@@ -87,6 +90,7 @@ public class EditStrategyActivity extends AppCompatActivity {
         endDateEditText = (EditText) findViewById(R.id.strategyEndDateEditText);
         baskets = new HashMap<>();
         basketDates = new HashMap<>();
+        basketViewMap = new HashMap<>();
 
         try {
             Intent intent = getIntent();
@@ -141,6 +145,21 @@ public class EditStrategyActivity extends AppCompatActivity {
 
         basketListViewAdapter.notifyDataSetChanged();
 
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            public void run() {
+                Log.i("arrived here #5", "true");
+                // FIXME: still can't automatically select in edit page.
+                if(hoveredBasketName.length() > 0) {
+                    basketViewMap.get(hoveredBasketName).setBackgroundColor(hoveredColor);
+                    Log.i("arrived here #5", "hoveredBasket:"+
+                            (((ColorDrawable) basketViewMap.get(hoveredBasketName).getBackground()).getColor() == hoveredColor));
+                }
+            }
+        }, 2000);
+
+        //new UpdateListViewTask().execute("");
+
         String uid = ParseUser.getCurrentUser().getString("userId");
 
         try {
@@ -189,6 +208,27 @@ public class EditStrategyActivity extends AppCompatActivity {
         }
     }
 
+    private class UpdateListViewTask extends AsyncTask<String, Void, Boolean> {
+
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            basketListViewAdapter.notifyDataSetChanged();
+
+            return true;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean res) {
+            super.onPostExecute(res);
+
+            if(res) {
+                if(hoveredBasket != null) {
+                    hoveredBasket.setBackgroundColor(hoveredColor);
+                }
+            }
+        }
+    }
+
     private class GetUserStrategyTask extends AsyncTask<String, Void, String> {
 
         @Override
@@ -213,11 +253,13 @@ public class EditStrategyActivity extends AppCompatActivity {
     private class BasketListViewAdapter extends ArrayAdapter<String> {
         private final Context context;
         private final List<String> names;
+        private boolean onCreating;
 
         public BasketListViewAdapter(Context context, List<String> names) {
             super(context, -1, names);
             this.context = context;
             this.names = names;
+            this.onCreating = true;
         }
 
         @Override
@@ -278,12 +320,15 @@ public class EditStrategyActivity extends AppCompatActivity {
 
             delete.setVisibility(View.INVISIBLE);
 
-            if(hoveredBasketName.equals(names.get(position))) {
-                setHoveredBasketListItem(rowView);
+            if (onCreating && hoveredBasketName.equals(names.get(position))) {
+                hoveredBasket = rowView;
             }
 
-            return rowView;
+            if(position == names.size() -1) onCreating = false;
 
+            basketViewMap.put(names.get(position), rowView);
+
+            return rowView;
         }
     }
 
@@ -293,11 +338,13 @@ public class EditStrategyActivity extends AppCompatActivity {
     private class StrategyListViewAdapter extends ArrayAdapter<String> {
         private final Context context;
         private final List<String> names;
+        private boolean onCreating;
 
-        public StrategyListViewAdapter(Context context, List<String> names) {
+        StrategyListViewAdapter(Context context, List<String> names) {
             super(context, -1, names);
             this.context = context;
             this.names = names;
+            this.onCreating = true;
         }
 
         @Override
@@ -328,6 +375,11 @@ public class EditStrategyActivity extends AppCompatActivity {
                 strategyInfo.setText(strategyInfoStr);
             }
 
+            if (onCreating && hoveredStrategyName.equals(names.get(position))) {
+                hoveredStrategy = rowView;
+                rowView.setBackgroundColor(hoveredColor);
+            }
+
             rowView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
@@ -347,12 +399,9 @@ public class EditStrategyActivity extends AppCompatActivity {
                 }
             });
 
-            if(hoveredStrategyName.equals(strategyNameStr)) {
-                setHoveredStrategyListItem(rowView);
-            }
+            if(position == names.size()-1) onCreating = false;
 
             return rowView;
-
         }
     }
 
@@ -369,7 +418,12 @@ public class EditStrategyActivity extends AppCompatActivity {
                         Toast.makeText(getApplicationContext(), "Please enter a past date", Toast.LENGTH_SHORT);
                         return;
                     }
-                    if(hoveredBasketName.length() > 0 && hoveredStrategyName.length() > 0) {
+                    if(hoveredBasketName != null && hoveredBasketName.length() > 0 && hoveredStrategyName.length() > 0) {
+                        if(dateAsInteger < basketDates.get(hoveredBasketName)) {
+                            Toast.makeText(getApplicationContext(),
+                                    "Please enter a date no earlier than basket set-up date", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
                         Intent intent = new Intent();
                         Map<String, String> map = new HashMap<>();
                         map.put("invest", ""+invest);
@@ -407,19 +461,16 @@ public class EditStrategyActivity extends AppCompatActivity {
     protected void setHoveredBasketListItem(View view) {
         if (hoveredBasket != null) {
             hoveredBasket.setBackgroundColor(unhoveredColor);
-            hoveredBasket.setHovered(false);
         }
         hoveredBasket = view;
-        hoveredBasket.setHovered(true);
         hoveredBasket.setBackgroundColor(hoveredColor);
     }
 
     protected void setHoveredStrategyListItem(View view) {
         if (hoveredStrategy != null) {
             hoveredStrategy.setBackgroundColor(unhoveredColor);
-            hoveredStrategy.setHovered(false);
         }
         hoveredStrategy = view;
-        hoveredStrategy.setHovered(true);
+        hoveredStrategy.setBackgroundColor(hoveredColor);
     }
 }
