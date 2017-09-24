@@ -7,13 +7,14 @@
     tools:context="com.yuqingcheng.luckinstock.SignupLoginActivity">
 
     <ImageButton
-        android:id="@+id/imageButton2"
+        android:id="@+id/avatar"
         android:layout_width="100dp"
         android:layout_height="100dp"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="90dp"
         android:adjustViewBounds="true"
+        android:background="@color/ap_transparent"
         android:scaleType="fitCenter"
         app:srcCompat="@drawable/default_avatar" />
 
@@ -25,7 +26,7 @@
         android:ems="10"
         android:hint="Enter username"
         android:inputType="textPersonName"
-        android:layout_below="@+id/imageButton2"
+        android:layout_below="@+id/avatar"
         android:layout_centerHorizontal="true" />
 
     <EditText

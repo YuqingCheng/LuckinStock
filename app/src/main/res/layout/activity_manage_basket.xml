@@ -7,15 +7,16 @@
     tools:context="com.yuqingcheng.luckinstock.ManageBasketActivity">
 
     <ImageButton
-        android:id="@+id/imageButton2"
+        android:id="@+id/avatar"
         android:layout_width="100dp"
         android:layout_height="100dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
         android:layout_marginTop="29dp"
         android:adjustViewBounds="true"
+        android:background="@color/ap_transparent"
         android:scaleType="fitCenter"
-        app:srcCompat="@drawable/default_avatar"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true" />
+        app:srcCompat="@drawable/default_avatar" />
 
     <ImageButton
         android:id="@+id/addBasket"
@@ -24,8 +25,8 @@
         android:background="@color/ap_transparent"
         android:onClick="addBasket"
         app:srcCompat="@android:drawable/ic_menu_add"
-        android:layout_below="@+id/imageButton2"
-        android:layout_alignEnd="@+id/imageButton2" />
+        android:layout_below="@+id/avatar"
+        android:layout_alignEnd="@+id/avatar" />
 
     <ListView
         android:id="@+id/basketList"

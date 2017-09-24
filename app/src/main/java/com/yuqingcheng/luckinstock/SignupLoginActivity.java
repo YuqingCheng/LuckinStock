@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,6 +27,7 @@ public class SignupLoginActivity extends AppCompatActivity implements View.OnCli
     EditText username;
     EditText password;
     Button signupLoginin;
+    ImageButton avatar;
     boolean onSignup;
     TextView changeSignupMode;
 
@@ -36,10 +38,15 @@ public class SignupLoginActivity extends AppCompatActivity implements View.OnCli
 
         username = (EditText) findViewById(R.id.loginUsername);
         password = (EditText) findViewById(R.id.loginPassword);
+        avatar = (ImageButton) findViewById(R.id.avatar);
         signupLoginin = (Button) findViewById(R.id.signupLoginin);
         changeSignupMode = (TextView) findViewById(R.id.changeSignupMode);
         changeSignupMode.setOnClickListener(this);
         onSignup = true;
+
+        getWindow().setBackgroundDrawableResource(R.drawable.background_3);
+
+
     }
 
     public void handleSignupLoginin(View view) {

@@ -147,9 +147,11 @@ public class MainActivity extends AppCompatActivity {
                 Color.rgb(103, 113, 245), Color.rgb(149, 216, 245), Color.rgb(239, 223, 80),
                 Color.rgb(195, 194, 189), Color.rgb(255, 163, 4), Color.rgb(235, 70, 70), Color.rgb(88, 239, 93)}));
 
+
         listView = (ListView) findViewById(R.id.listView);
 
         plot.getGraph().getLineLabelStyle(XYGraphWidget.Edge.BOTTOM).setFormat(new XLabelFormat());
+        plot.getLayoutManager().remove(plot.getLegend());
 
         listViewAdapter = new ListViewAdapter(this, listViewSymbols);
 

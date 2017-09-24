@@ -69,6 +69,8 @@ public class ManageBasketActivity extends AppCompatActivity {
         hoveredBasket = "";
         basketNames = new ArrayList<>();
 
+        getWindow().setBackgroundDrawableResource(R.drawable.background_2);
+
         try{
             Intent intent = getIntent();
             JSONObject basketJSON = new JSONObject(intent.getStringExtra("baskets"));
